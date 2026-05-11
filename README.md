@@ -125,11 +125,33 @@ All endpoints require an `api_key` query parameter.
 
 ### `POST /api/phishing-url`
 
-Classify a URL. Returns one of `safe`, `phishing`, `split` (sources disagree), `offline`, `not_exist`, or `error`.
+Classify a URL. The response always includes three top-level fields — `code`, `result`, and `detection_type` — that summarise the verdict and where it came from.
 
 ```bash
 curl -X POST "http://localhost:8000/api/phishing-url?url=https://example.com&api_key=USER_KEY"
 ```
+
+**Response schema (top-level fields)**
+
+| Field | Type | Values |
+| --- | --- | --- |
+| `code` | int | `200`, `201`, `300`, `301`, `400`, `401`, `500` |
+| `result` | string | `safe`, `phishing`, `NA` |
+| `detection_type` | string | `whitelist database`, `blacklist database`, `google safe browsing`, `ML`, `Unable to detect` |
+
+**Code reference**
+
+| `code` | `result` | `detection_type` | When |
+| --- | --- | --- | --- |
+| 200 | safe | whitelist database | URL/domain matched the whitelist, or it is an official Thai TLD (`.go.th`, `.ac.th`, `.or.th`, `.mi.th`) |
+| 201 | phishing | blacklist database | URL matched the blacklist |
+| 300 | safe | google safe browsing | *(reserved — Google Safe Browsing currently only escalates phishing verdicts)* |
+| 301 | phishing | google safe browsing | Google Safe Browsing flagged the URL (skipping ML), or it flagged it during a split disagreement |
+| 400 | safe | ML | ML model classified as safe (Safe Browsing agreed or was unavailable) |
+| 401 | phishing | ML | ML model classified as phishing (Safe Browsing agreed, was unavailable, or disagreed and lost) |
+| 500 | NA | Unable to detect | Invalid format, domain does not exist, offline, ML feature-extraction failure, or unhandled error |
+
+In addition to the three fields above, the body also contains contextual data (e.g. `url`, `domain_name`, `prediction`, `message`, `result_type`, `online`, `details`, `phish_id`, `phish_detail_url`) for backwards compatibility with existing consumers.
 
 ### `POST /api/verifited-url` (admin)
 
@@ -149,15 +171,19 @@ Clear all in-memory caches.
 
 ## Detection logic
 
-For each URL the prediction API runs:
+For each URL the prediction API runs the following pipeline. The first stage that produces a verdict wins and returns the corresponding `code`.
 
-1. **Format check** — must have a valid TLD or be an IP literal.
-2. **Whitelist check** — full URL match passes immediately; domain match passes only if the domain is not a hosting platform listed in `hosting_platforms.json`.
-3. **Blacklist check** — return stored record if matched.
-4. **Liveness** — DNS lookup (with IDN→Punycode) then HTTP probe. Returns `not_exist` or `offline` if unreachable.
-5. **Google Safe Browsing** — if it flags the URL, auto-blacklist and return.
-6. **ML model** (`app/mlengine/mlp99.31`) — extract features and predict.
-7. **Reconcile** — combine model and Safe Browsing results into `unanimous`, `split`, or `our_system_only` responses; blacklist phishing and whitelist unanimous-safe verdicts.
+1. **Format check** — must have a valid TLD or be an IP literal. → `500 / NA` on failure.
+2. **Whitelist check** — full URL match passes immediately; domain match passes only if the domain is not a hosting platform listed in `hosting_platforms.json`. → `200 / safe / whitelist database`.
+3. **Blacklist check** — return stored record if matched. → `201 / phishing / blacklist database`.
+4. **Liveness** — DNS lookup (with IDN→Punycode) then HTTP probe. → `500 / NA / Unable to detect` if domain does not exist or the server is offline.
+5. **Thai official TLD shortcut** — `.go.th`, `.ac.th`, `.or.th`, `.mi.th` are auto-trusted once liveness passes. → `200 / safe / whitelist database`.
+6. **Google Safe Browsing** — if it flags the URL, auto-blacklist and return. → `301 / phishing / google safe browsing`.
+7. **ML model** (`app/mlengine/mlp99.31`) — extract features and predict.
+8. **Reconcile** — combine ML and Safe Browsing:
+   - Both agree → `400 / safe / ML` or `401 / phishing / ML` (also adds to whitelist or blacklist).
+   - Safe Browsing unavailable → use ML alone (`400` or `401`).
+   - Disagree (split) → phishing wins; attribute to whichever flagged it (`401 / ML` or `301 / google safe browsing`).
 
 ## License
 

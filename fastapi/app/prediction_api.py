@@ -773,9 +773,12 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
 
         if not is_valid_format:
             return {
+                "code": 500,
+                "result": "NA",
+                "detection_type": "Unable to detect",
                 "url": url,
                 "message": "Invalid URL format. Please enter a valid URL (e.g., example.com, ชื่อโดเมน.ไทย).",
-                "prediction": "error", 
+                "prediction": "error",
                 "result_type": "invalid"
             }
         
@@ -813,6 +816,9 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                 # Full URL Match -> Safe แน่นอน
                 print(f"[WHITELIST HIT] Full URL match: {url}")
                 return {
+                    "code": 200,
+                    "result": "safe",
+                    "detection_type": "whitelist database",
                     "url": whitelisted_url.get("url"),
                     "domain_name": whitelisted_url.get("domain_name"),
                     "submission_time": whitelisted_url.get("submission_time"),
@@ -835,6 +841,9 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                 else:
                     print(f"[WHITELIST HIT] Domain match: {domain_name}")
                     return {
+                        "code": 200,
+                        "result": "safe",
+                        "detection_type": "whitelist database",
                         "url": whitelisted_url.get("url"),
                         "domain_name": whitelisted_url.get("domain_name"),
                         "submission_time": whitelisted_url.get("submission_time"),
@@ -855,6 +864,9 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
         if blacklisted_url:
             # If domain exists in BLACK_LIST, return the details from the database
             blacklisted_data = {
+                "code": 201,
+                "result": "phishing",
+                "detection_type": "blacklist database",
                 "url": blacklisted_url.get("url"),
                 "phish_id": blacklisted_url.get("phish_id"),
                 "phish_detail_url": blacklisted_url.get("phish_detail_url"),
@@ -878,6 +890,9 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
         # กรณีที่ 1: Domain ไม่มีจริง (DNS lookup failed)
         if online_status == "not_exist":
             return {
+                "code": 500,
+                "result": "NA",
+                "detection_type": "Unable to detect",
                 "url": url,
                 "domain_name": domain_name,
                 "our_system": "Unknown",
@@ -887,10 +902,13 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                 "prediction": "not_exist",
                 "online": online_status,
             }
-        
+
         # กรณีที่ 2: Domain มีจริงแต่เข้าไม่ได้ (Offline)
         if online_status == "no" or online_status == "offline":
             return {
+                "code": 500,
+                "result": "NA",
+                "detection_type": "Unable to detect",
                 "url": url,
                 "domain_name": domain_name,
                 "our_system": "Unknown",
@@ -912,6 +930,9 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
         if domain_suffix in safe_suffixes:
              # URL ถูกเช็คแล้วว่า Online
              return {
+                "code": 200,
+                "result": "safe",
+                "detection_type": "whitelist database",
                 "url": url,
                 "domain_name": domain_name,
                 "our_system": "Safe",
@@ -977,6 +998,9 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
 
             # 4. Return Response
             response_data = {
+                "code": 301,
+                "result": "phishing",
+                "detection_type": "google safe browsing",
                 "url": url,
                 "domain_name": domain_name,
                 "our_system": "Safe", # Skipped our system
@@ -986,10 +1010,10 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                 "prediction": "split", # Keep frontend happy
                 "online": online_status,
             }
-            
+
             if whois_details:
                 response_data["details"] = whois_details
-                
+
             return response_data
 
         # ========================================
@@ -1002,6 +1026,9 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
         except Exception as e:
             print(f"[ERROR] Feature extraction failed for {url}: {e}")
             return {
+                "code": 500,
+                "result": "NA",
+                "detection_type": "Unable to detect",
                 "url": url,
                 "message": f"This URL cannot be processed: {url}",
                 "prediction": "error",
@@ -1010,7 +1037,10 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
         # เช็คกรณี website offline (จาก function prediction)
         if pre == 2:
             return {
-                 "url": url,
+                "code": 500,
+                "result": "NA",
+                "detection_type": "Unable to detect",
+                "url": url,
                 "domain_name": domain_name,
                 "our_system": "Safe",
                 "safe_browsing": "Safe",
@@ -1076,6 +1106,9 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                     })
                 
                 return {
+                    "code": 401,
+                    "result": "phishing",
+                    "detection_type": "ML",
                     "url": url,
                     "domain_name": domain_name,
                     "our_system": our_system_result,
@@ -1089,6 +1122,9 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
             else:
                 # Our System บอกว่า Safe และ Safe Browsing ไม่รู้
                 return {
+                    "code": 400,
+                    "result": "safe",
+                    "detection_type": "ML",
                     "url": url,
                     "domain_name": domain_name,
                     "our_system": our_system_result,
@@ -1132,6 +1168,9 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                     print(f"Inserted into BLACK_LIST: {result.inserted_id}")
                 
                 return {
+                    "code": 401,
+                    "result": "phishing",
+                    "detection_type": "ML",
                     "url": url,
                     "phish_id": random_id,
                     "phish_detail_url": f"{DOMAIN_NAME}/view/detail/{random_id}",
@@ -1150,7 +1189,7 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                 existing_whitelist = db[WHITE_LIST].find_one({"url_lower": url_lower})
                 if not existing_whitelist:
                     existing_whitelist = db[WHITE_LIST].find_one({"url": url})
-                
+
                 if not existing_whitelist:
                     db[WHITE_LIST].insert_one({
                         "url": url,
@@ -1159,8 +1198,11 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                         "submission_time": submission_time,
                     })
                     print(f"[WHITELIST] Added {url} to whitelist")
-                
+
                 return {
+                    "code": 400,
+                    "result": "safe",
+                    "detection_type": "ML",
                     "url": url,
                     "domain_name": domain_name,
                     "message": f"The URL {url} has been verified as safe by our system and Google Safe Browsing.",
@@ -1230,7 +1272,18 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                 if our_system_result != "Unknown" and safe_browsing_result != "Unknown":
                      split_message += details_message
             
+            # Phishing-wins on disagreement; attribute to whichever flagged it.
+            if our_system_result == "Phishing":
+                split_code, split_result, split_detection = 401, "phishing", "ML"
+            elif safe_browsing_result == "Phishing":
+                split_code, split_result, split_detection = 301, "phishing", "google safe browsing"
+            else:
+                split_code, split_result, split_detection = 500, "NA", "Unable to detect"
+
             response_data = {
+                "code": split_code,
+                "result": split_result,
+                "detection_type": split_detection,
                 "url": url,
                 "domain_name": domain_name,
                 "our_system": our_system_result,
@@ -1239,16 +1292,19 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                 "result_type": "split",  # ผลลัพธ์ไม่เหมือนกัน
                 "prediction": "split",
             }
-            
+
             # เพิ่ม WHOIS details ใน response ถ้ามี
             if whois_details:
                 response_data["details"] = whois_details
-            
+
             return response_data
-    
+
     except Exception as e:
         print(f"[ERROR] check_phishing_url failed for {url}: {e}")
         return {
+            "code": 500,
+            "result": "NA",
+            "detection_type": "Unable to detect",
             "error": True,
             "url": url,
             "message": f"This URL cannot be processed: {url}",

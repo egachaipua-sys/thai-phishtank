@@ -46,7 +46,7 @@ thai-phishtank/
 - MongoDB 5.0+
 - A Google Safe Browsing API key
 
-## Setup
+## Setup (development)
 
 ### 1. Clone and create configs
 
@@ -93,6 +93,271 @@ python -m app.wsgi
 ```
 
 Open `http://localhost:5000`.
+
+## Production deployment (Ubuntu)
+
+Tested stack:
+
+- MongoDB 7.0.18
+- Python 3.12.3
+- Nginx 1.24.0
+- Certbot 2.9.0
+
+The instructions below assume Ubuntu and a non-root user named `cls`. Substitute your own username, paths, and domain (`thaiphishtank.org`) throughout.
+
+### 1. Place the source
+
+Drop the project under `/home/<user>/phishtank_th` (via `git clone`, or `scp` a zip and unpack):
+
+```bash
+sudo apt update
+sudo apt install -y zip unzip
+unzip phishtank_th.zip && rm phishtank_th.zip
+unzip backup.zip && rm backup.zip   # only if you have a database dump to restore
+```
+
+### 2. Install MongoDB 7.0.18
+
+Add the MongoDB APT repository, install the pinned version, and hold it so unattended upgrades don't bump it:
+
+```bash
+curl -fsSL https://pgp.mongodb.com/server-7.0.asc \
+  | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/mongodb-org-7.0.gpg
+
+echo "deb [ arch=amd64,arm64 signed-by=/etc/apt/trusted.gpg.d/mongodb-org-7.0.gpg ] \
+https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/7.0 multiverse" \
+  | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+
+sudo apt update
+sudo apt install -y \
+  mongodb-org=7.0.18 \
+  mongodb-org-database=7.0.18 \
+  mongodb-org-server=7.0.18 \
+  mongodb-org-shell=7.0.18 \
+  mongodb-org-mongos=7.0.18 \
+  mongodb-org-tools=7.0.18
+
+sudo apt-mark hold mongodb-org mongodb-org-database mongodb-org-server \
+  mongodb-org-shell mongodb-org-mongos mongodb-org-tools
+
+sudo systemctl enable --now mongod
+```
+
+**Backup / restore** the `phishtank_th` database:
+
+```bash
+sudo mongodump   --gzip --db phishtank_th --out backup
+sudo mongorestore --gzip --db phishtank_th backup/phishtank_th
+```
+
+### 3. FastAPI service
+
+Install Python tooling, create the venv, install requirements:
+
+```bash
+sudo apt install -y python3-pip python3-dev python3-venv \
+  build-essential libssl-dev libffi-dev python3-setuptools
+
+cd ~/phishtank_th/fastapi
+python3 -m venv venv
+source venv/bin/activate
+pip install wheel
+pip install -r requirements.txt
+deactivate
+```
+
+Create `/etc/systemd/system/fastapi.service`:
+
+```ini
+[Unit]
+Description=FastAPI Application
+After=network.target
+
+[Service]
+User=cls
+Group=www-data
+WorkingDirectory=/home/cls/phishtank_th/fastapi
+ExecStart=/home/cls/phishtank_th/fastapi/venv/bin/gunicorn -w 1 --max-requests 100 --max-requests-jitter 30 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 app.wsgi:app
+LimitNOFILE=65535
+LimitNPROC=infinity
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+
+```bash
+sudo systemctl enable --now fastapi
+```
+
+### 4. Swap and Flask service
+
+Allocate 1 GB of swap so the worker doesn't OOM under load spikes, and persist it across reboots:
+
+```bash
+sudo fallocate -l 1G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile swap swap defaults 0 0' | sudo tee -a /etc/fstab
+```
+
+Install Flask dependencies:
+
+```bash
+cd ~/phishtank_th/flaskweb
+python3 -m venv venv
+source venv/bin/activate
+pip install wheel
+pip install -r requirements.txt
+deactivate
+```
+
+Create `/etc/systemd/system/flaskweb.service`:
+
+```ini
+[Unit]
+Description=Gunicorn instance to serve flaskweb
+After=network.target
+
+[Service]
+User=cls
+Group=www-data
+WorkingDirectory=/home/cls/phishtank_th/flaskweb
+Environment="PATH=/home/cls/phishtank_th/flaskweb/venv/bin"
+ExecStart=/home/cls/phishtank_th/flaskweb/venv/bin/gunicorn --workers 1 --threads 4 --worker-class gthread --max-requests 100 --max-requests-jitter 30 --bind unix:flaskweb.sock -m 007 app.wsgi:app
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+
+```bash
+sudo systemctl enable --now flaskweb
+```
+
+### 5. Nginx + SSL
+
+Install Nginx, Certbot, and open the firewall:
+
+```bash
+sudo apt install -y nginx certbot python3-certbot-nginx
+sudo ufw allow 'Nginx Full'
+sudo ufw allow 587               # SMTP submission, only if you send email from the host
+```
+
+Issue an SSL certificate (substitute your domain):
+
+```bash
+sudo certbot --nginx -d thaiphishtank.org
+```
+
+Create `/etc/nginx/sites-available/phishtank_th` — Nginx fronts both services, terminating TLS, sending `/api/` to FastAPI on `:8000` and everything else to the Flask Unix socket:
+
+```nginx
+server {
+    listen 80;
+    server_name thaiphishtank.org;
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name thaiphishtank.org;
+
+    ssl_certificate     /etc/letsencrypt/live/thaiphishtank.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/thaiphishtank.org/privkey.pem;
+
+    location / {
+        proxy_read_timeout    300s;
+        proxy_connect_timeout 300s;
+        proxy_pass http://unix:/home/cls/phishtank_th/flaskweb/flaskweb.sock;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+Enable the site, validate, and reload:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/phishtank_th /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+
+# Nginx (running as www-data) needs traverse permission on the home dir
+# to reach the Flask Unix socket.
+sudo chmod 755 /home/cls
+
+# Plain HTTP rule no longer needed once HTTPS is up.
+sudo ufw delete allow 'Nginx HTTP'
+```
+
+### 6. Health checks and logs
+
+```bash
+# Service status
+sudo systemctl status nginx
+sudo systemctl status fastapi
+sudo systemctl status flaskweb
+sudo systemctl status mongod
+
+# Live application logs (Ctrl-C to exit)
+sudo journalctl -u fastapi  -f
+sudo journalctl -u flaskweb -f
+sudo journalctl -u mongod   -f
+sudo journalctl -u nginx    -f
+
+# Nginx access / error log files
+sudo less /var/log/nginx/access.log
+sudo less /var/log/nginx/error.log
+
+# Resources
+free -h            # RAM + swap usage
+ls -lh /swapfile   # Swap file size on disk
+sudo swapon --show # Active swap devices
+ps aux | grep gunicorn
+top
+```
+
+### Updating after a code change
+
+After editing source on the server (or redeploying via scp/git), restart the relevant service so it picks up the new code:
+
+```bash
+sudo systemctl restart fastapi   # ML / API changes
+sudo systemctl restart flaskweb  # web UI / controller changes
+sudo systemctl reload  nginx     # nginx config changes only
+```
 
 ## Configuration
 

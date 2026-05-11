@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/LOGO.png') }}">
+    <title>{% block title %}{% endblock %}</title>
+
+    <link href="{{ url_for('static', filename='vendor/fontawesome-free/css/all.min.css') }}" rel="stylesheet"
+        type="text/css">
+    <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@200;300&display=swap" rel="stylesheet">
+
+    <link href="{{ url_for('static', filename='vendor/datatables/dataTables.bootstrap4.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/sb-admin-2.min.css') }}" rel="stylesheet">
+
+    {% block link %}{% endblock %}
+
+    {% block style %}
+
+    {% endblock %}
+</head>
+
+<body id="page-top">
+    <div id="wrapper">
+        <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+            <a class="sidebar-brand d-flex align-items-center justify-content-center" href="">
+                <!-- <div class="sidebar-brand-icon rotate-n-15">
+                    <i class="fas fa-fish"></i>
+                </div> -->
+                <div class="sidebar-brand-text mx-3">{% block dashtitle %}Admin Dashboard{% endblock %}</div>
+            </a>
+
+            <hr class="sidebar-divider my-0">
+
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('auth.admindashboard') }}">
+                    <i class="fas fa-fw fa-tachometer-alt"></i>
+                    <span>{{ "แดชบอร์ด" if lang == "th" else "Dashboard" }}</span>
+                </a>
+            </li>
+
+            <hr class="sidebar-divider">
+
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('auth.admininfo') }}">
+                    <i class="fa fa-info-circle"></i>
+                    <span>{{ "คู่มือการใช้งาน API Key" if lang == "th" else "API Key Usage Guide" }}</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('auth.adminrequest') }}">
+                    <i class="fas fa-solid fa-key"></i>
+                    <span>{{ "ขอรับรหัส API" if lang == "th" else "Request API Key" }}</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseWhitelist"
+                    aria-expanded="false" aria-controls="collapseWhitelist">
+                    <i class="fas fa-check-circle"></i>
+                    <span>{{ "จัดการ Whitelists" if lang == "th" else "Manage Whitelists" }}</span>
+                </a>
+                <div id="collapseWhitelist" class="collapse" data-parent="#accordionSidebar">
+                    <div class="py-2 collapse-inner rounded">
+                        <a class="nav-link" href="{{ url_for('auth.adminwhitereport') }}">
+                            <span>{{ "รายงาน Legitimate URL" if lang == "th" else "Legitimate URL Reports" }}</span>
+                        </a>
+                        <a class="nav-link" href="{{ url_for('auth.adminwhitetable') }}">
+                            <span>{{ "รายงานที่ฉันส่ง" if lang == "th" else "My Submitted Reports" }}</span>
+                        </a>
+                        <a class="nav-link" href="{{ url_for('auth.adminwhitecheck') }}">
+                            <span>{{ "Legitimate URLs" if lang == "th" else "Legitimate URL Lists" }}</span>
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseBlacklist"
+                    aria-expanded="false" aria-controls="collapseBlacklist">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>{{ "จัดการ Blacklists" if lang == "th" else "Manage Blacklists" }}</span>
+                </a>
+                <div id="collapseBlacklist" class="collapse" data-parent="#accordionSidebar">
+                    <div class="py-2 collapse-inner rounded">
+                        <a class="nav-link" href="{{ url_for('auth.adminreport') }}">
+                            <span>{{ "รายงาน Phishing URL" if lang == "th" else "Phishing URL Reports" }}</span>
+                        </a>
+                        <a class="nav-link" href="{{ url_for('auth.admintable') }}">
+                            <span>{{ "รายงานที่ฉันส่ง" if lang == "th" else "My Submitted Reports" }}</span>
+                        </a>
+                        <a class="nav-link" href="{{ url_for('auth.admincheck') }}">
+                            <span>{{ "Phishing URL" if lang == "th" else "Phishing URL Lists" }}</span>
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('auth.adminmanage') }}">
+                    <i class="fa fa-address-book"></i>
+                    <span>{{ "จัดการสมาชิก" if lang == "th" else "Manage Members" }}</span>
+                </a>
+            </li>
+
+            <hr class="sidebar-divider d-none d-md-block">
+
+            <div class="text-center d-none d-md-inline">
+                <button class="rounded-circle border-0" id="sidebarToggle"></button>
+            </div>
+        </ul>
+
+        <div id="content-wrapper2" class="d-flex flex-column">
+            <div id="content">
+                <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+                    <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+                        <i class="fa fa-bars"></i>
+                    </button>
+
+                    <ul class="navbar-nav mr-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/">
+                                <i class="fas fa-home"></i>
+                                {{ "หน้าหลัก" if lang == "th" else "Home" }}
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown no-arrow">
+                            <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button"
+                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-globe"></i>
+                                <span class="ml-1">{{ "TH" if lang == "th" else "EN" }}</span>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-left shadow animated--grow-in"
+                                aria-labelledby="languageDropdown">
+                                <a class="dropdown-item change-lang" href="?lang=th">
+                                    <i class="fas fa-language fa-sm fa-fw mr-2 text-gray-400"></i> ภาษาไทย
+                                </a>
+                                <a class="dropdown-item change-lang" href="?lang=en">
+                                    <i class="fas fa-language fa-sm fa-fw mr-2 text-gray-400"></i> English
+                                </a>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <ul class="navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">
+                                <span class="mr-2 d-none d-lg-inline">
+                                    {% block firstname %}{% endblock %}
+                                    {% block lastname %}{% endblock %}
+                                </span>
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown no-arrow">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                                data-toggle="modal" data-target="#logoutModal" aria-haspopup="true"
+                                aria-expanded="false">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span class="ml-2">{{ "ออกจากระบบ" if lang == "th" else "Logout" }}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+
+                <div class="container-fluid">
+                    {% block content %}
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fas fa-angle-up"></i>
+    </a>
+
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">{{ "พร้อมที่จะออกหรือยัง?" if lang == "th" else
+                        "Ready to leave?" }}</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">{{ "เลือก 'ออกจากระบบ' ข้างล่างหากคุณพร้อมที่จะสิ้นสุดเซสชันปัจจุบันของคุณ"
+                    if lang == "th" else "Select 'Logout' below if you are ready to end your current session." }}
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">{{ "ยกเลิก" if lang == "th"
+                        else "Cancel" }}</button>
+                    <a class="btn btn-primary" href="{{ url_for('auth.logout') }}">{{ "ออกจากระบบ" if lang == "th"
+                        else "Logout" }}</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='vendor/jquery/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='vendor/jquery-easing/jquery.easing.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/datatables/jquery.dataTables.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/datatables/dataTables.bootstrap4.min.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='js/sb-admin-2.min.js') }}"></script>
+
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

@@ -1,0 +1,63 @@
+{% extends "view/base.html" %}
+{% block title %}Thai Phish Tank | Phishing Details{% endblock %}
+{% block link %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdn.datatables.net/1.13.1/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css" rel="stylesheet">
+    <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.1/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
+    <link href="{{ url_for('static', filename='css/index-style2.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="/" class="btn btn-outline-primary mb-3">
+        <i class="fas fa-home"></i> {{ "กลับหน้าหลัก" if lang == "th" else "Back to Home" }}
+    </a>
+</div>
+
+{% if details %}
+<div class="container">
+    <div class="table-section">
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered">
+                <thead class="thead-light">
+                    <tr>
+                        <th style="width: 20%;">List</th>
+                        <th style="width: 75%;">Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for key, value in details.items() %}
+                    <tr>
+                        <td><strong>{{ key }}</strong></td>
+                        <td>
+                            {% if key == 'details' and value is iterable %}
+                                {% for sub_item in value %}
+                                    {% for sub_key, sub_value in sub_item.items() %}
+                            <p><strong>{{ sub_key }}</strong>: {{ sub_value | default('N/A') }}</p>
+                                    {% endfor %}
+                                {% endfor %}
+                            {% elif value is iterable and not value is string %}
+                                {% for item in value %}
+                            <p>{{ item | default('N/A') }}</p>
+                                {% endfor %}
+                            {% else %}
+                            {{ value | default('N/A') }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning text-center">
+    No details available.
+</div>
+{% endif %}
+{% endblock %}

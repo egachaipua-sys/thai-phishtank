@@ -1,0 +1,41 @@
+{% extends "auth/user/base.html" %}
+{% block title %}Thai Phish Tank | Request API{% endblock %}
+{% block firstname %}{{ session.get('user_firstname') }}{% endblock %}
+{% block lastname %}{{ session.get('user_lastname') }}{% endblock %}
+{% block style %}
+<link href="{{ url_for('static', filename='css/info.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="container">
+        <br>
+        <form>
+            <button type="button" id="requestApiKeyBtn" class="btn btn-primary mb-4">
+                {{ translations["request_api_key"][lang] }}
+            </button>
+            <div class="form-group">
+                <label for="apiKey">{{ translations["your_api_key"][lang] }}</label>
+                <div class="input-group">
+                    <input type="text" id="apiKey" class="form-control" value="{{ api_key or '' }}"
+                        placeholder="{{ translations['api_key_placeholder'][lang] }}" readonly>
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" type="button" id="copyApiKeyBtn">
+                            {{ translations["copy"][lang] }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ url_for('static', filename='js/request.js') }}"></script>
+
+{% endblock %}
+{% set translations = {
+"request_api_key": {"th": "ขอรับ API Key", "en": "Request API Key"},
+"your_api_key": {"th": "API Key ของฉัน", "en": "My API Key"},
+"api_key_placeholder": {"th": "ยังไม่มี API Key", "en": "No API Key yet"},
+"copy": {"th": "คัดลอก", "en": "Copy"}
+} %}

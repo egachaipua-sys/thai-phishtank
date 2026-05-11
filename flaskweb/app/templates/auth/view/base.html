@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/LOGO.png') }}?v=2">
+    <title>{% block title %}Thai Phish Tank{% endblock %}</title>
+    <link href="{{ url_for('static', filename='vendor/fontawesome-free/css/all.min.css') }}?v=2" rel="stylesheet"
+        type="text/css">
+    <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@200;300&display=swap" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/sb-admin-2.min.css') }}?v=2" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/index-style2.css') }}?v=2" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/styles.css') }}?v=2" rel="stylesheet">
+    {% block link %}
+    {% endblock %}
+</head>
+
+<body>
+    <div class="container">
+        {% block content %}
+        {% endblock %}
+        {% block script%}
+        {% endblock %}
+    </div>
+    <script src="{{ url_for('static', filename='vendor/jquery/jquery.min.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='vendor/jquery-easing/jquery.easing.min.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='js/sb-admin-2.min.js') }}?v=2"></script>
+</body>
+
+</html>

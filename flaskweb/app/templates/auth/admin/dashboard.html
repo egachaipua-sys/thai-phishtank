@@ -1,0 +1,491 @@
+{% extends "auth/admin/base.html" %}
+{% block title %}Thai Phish Tank | Dashboard{% endblock %}
+{% block firstname %}{{ session.get('user_firstname') }}{% endblock %}
+{% block lastname %}{{ session.get('user_lastname') }}{% endblock %}
+{% block link %}
+<link href="{{ url_for('static', filename='css/info.css') }}" rel="stylesheet">
+<!-- Add table styles for the new table -->
+<link href="{{ url_for('static', filename='css/table-styles.css') }}" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+
+    .chart-card {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    /* FORCE RESET: Ensure ID is a text link, overriding any residual badge styles */
+    #phishingReportsTable tbody td:nth-child(1) a {
+        background-color: transparent !important;
+        color: #4e73df !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        font-weight: normal !important;
+        text-decoration: none !important;
+        display: inline !important;
+        min-width: auto !important;
+        box-shadow: none !important;
+    }
+
+    #phishingReportsTable tbody td:nth-child(1) a:hover {
+        text-decoration: underline !important;
+        color: #2e59d9 !important;
+        background-color: transparent !important;
+    }
+
+    /* PAGINATION FIX: Professional, connected look */
+    .dataTables_wrapper .dataTables_paginate .pagination {
+        margin: 0 !important;
+        justify-content: flex-end !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .page-item {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .page-item .page-link {
+        background-color: #fff !important;
+        color: #4e73df !important;
+        border: 1px solid #dddfeb !important;
+        margin-left: -1px !important;
+        /* Remove gaps */
+        border-radius: 0 !important;
+        /* Reset radius */
+        line-height: 1.25;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .page-item:first-child .page-link {
+        border-top-left-radius: 0.35rem !important;
+        border-bottom-left-radius: 0.35rem !important;
+        margin-left: 0 !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .page-item:last-child .page-link {
+        border-top-right-radius: 0.35rem !important;
+        border-bottom-right-radius: 0.35rem !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .page-item.active .page-link {
+        background-color: #4e73df !important;
+        border-color: #4e73df !important;
+        color: #fff !important;
+        z-index: 1;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .page-item.disabled .page-link {
+        color: #858796 !important;
+        background-color: #fff !important;
+        border-color: #dddfeb !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .page-item:not(.active):not(.disabled) .page-link:hover {
+        background-color: #eaecf4 !important;
+        color: #2e59d9 !important;
+    }
+
+    /* WIDE TABLE FIX: Allow URL column to expand fully */
+    @media screen and (min-width: 992px) {
+        .text-break {
+            max-width: none !important;
+            /* Remove the 350px limit */
+            width: 100%;
+            min-width: 300px;
+            /* Ensure it starts reasonably wide */
+        }
+
+        /* Ensure table uses full width */
+        #phishingReportsTable {
+            width: 100% !important;
+        }
+    }
+
+    /* CRITICAL FIX: Unlock Card Width (Overriding info.css restriction) */
+    .card {
+        max-width: none !important;
+        margin: 0 0 1.5rem 0 !important;
+        /* Keep bottom margin, reset others */
+        padding: 0 !important;
+        /* Reset padding (Bootstrap manages card-body padding) */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Statistics Cards Row -->
+<div class="row mb-4">
+    <div class="col-xl-4 col-md-6">
+        <div class="card border-left-success shadow py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            <h5>{{ translations["phish_url"][lang] }}</h5>
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{total}}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-6">
+        <div class="card border-left-info shadow py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            <h5>{{ translations["your_submitted"][lang] }}</h5>
+                        </div>
+                        <div class="row no-gutters align-items-center">
+                            <div class="col-auto">
+                                <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{submit}}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-6">
+        <div class="card border-left-warning shadow py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            <h5>{{ translations["you_verify"][lang] }}</h5>
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{verify}}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-comments fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row">
+    <!-- Country Statistics Chart -->
+    <div class="col-xl-6 col-lg-6 mb-4">
+        <div class="card shadow chart-card">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center bg-primary text-white">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-globe-asia mr-2"></i>{{ translations["country_stats"][lang] }}
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="countryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Submissions Chart -->
+    <div class="col-xl-6 col-lg-6 mb-4">
+        <div class="card shadow chart-card">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center bg-success text-white">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-chart-line mr-2"></i>{{ translations["monthly_stats"][lang] }}
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Phishing Reports Table (Structure: checkreport.html, Data: Home Page) -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">{{ translations["phish_url"][lang] }} (Recent)</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered" id="phishingReportsTable" width="100%" cellspacing="0">
+                <thead class="thead-light">
+                    <tr>
+                        <th class="text-center" style="width: 15%;">ID</th>
+                        <th class="text-center" style="width: 50%;">URL</th>
+                        <th class="text-center" style="width: 15%;">{{ "สถานะ" if lang == 'th' else "Status" }}</th>
+                        <th class="text-center" style="width: 20%;">
+                            {{ "การยืนยัน" if lang == 'th' else "Verify" }}
+                            <i class="fas fa-info-circle ml-1" data-toggle="tooltip" title="Verified status"></i>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize DataTable matching Home Page logic
+        const lang = "{{ lang }}";
+
+        // Prevent reinitialize error
+        $.fn.dataTable.ext.errMode = 'none';
+        if ($.fn.DataTable.isDataTable('#phishingReportsTable')) {
+            $('#phishingReportsTable').DataTable().destroy();
+        }
+
+        $('#phishingReportsTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "responsive": true,
+            "ajax": {
+                "url": "{{ url_for('controller.get_phishing_data') }}",
+                "type": "POST",
+                "dataSrc": function (json) {
+                    return json.data;
+                }
+            },
+            "columns": [
+                {
+                    "data": "phish_id",
+                    "className": "text-center",
+                    "render": function (data, type, row) {
+                        if (data && data !== '-') {
+                            var baseUrl = "{{ url_for('view.detail', phish_id='') }}";
+                            // Render as Badge
+                            return '<a href="' + baseUrl + data + '">' + data + '</a>';
+                        }
+                        return 'No ID';
+                    },
+                    "orderable": false,
+                    "responsivePriority": 1
+                },
+                {
+                    "data": "url",
+                    "orderable": false,
+                    "render": function (data, type, row) {
+                        return '<div class="text-break">' + data + '</div>';
+                    },
+                    "responsivePriority": 2
+                },
+                {
+                    "data": "online",
+                    "className": "text-center",
+                    "render": function (data, type, row) {
+                        var statusText, badgeClass;
+                        // Determine text based on lang
+                        var lblOnline = (lang === 'th') ? 'ออนไลน์' : 'Online';
+                        var lblNotExist = (lang === 'th') ? 'ไม่พบโดเมน' : 'Not Exist';
+                        var lblOffline = (lang === 'th') ? 'ออฟไลน์' : 'Offline';
+
+                        if (data === 'yes' || data === 'online') {
+                            statusText = lblOnline;
+                            badgeClass = 'bg-success';
+                        } else if (data === 'not_exist') {
+                            statusText = lblNotExist;
+                            badgeClass = 'bg-secondary';
+                        } else {
+                            statusText = lblOffline;
+                            badgeClass = 'bg-danger';
+                        }
+                        return '<span class="badge ' + badgeClass + ' text-white" style="font-size: 0.9rem; padding: 6px 12px;">' + statusText + '</span>';
+                    },
+                    "defaultContent": "",
+                    "orderable": false,
+                    "responsivePriority": 3
+                },
+                {
+                    "data": "verified",
+                    "className": "text-center",
+                    "render": function (data, type, row) {
+                        var lblYes = (lang === 'th') ? 'ยืนยัน' : 'Yes';
+                        var lblNo = (lang === 'th') ? 'ไม่' : 'No';
+                        var verifyText = (data === 'yes') ? lblYes : lblNo;
+                        var badgeClass = (data === 'yes') ? 'bg-success' : 'bg-danger';
+                        return '<span class="badge ' + badgeClass + ' text-white" style="font-size: 0.9rem; padding: 6px 12px;">' + verifyText + '</span>';
+                    },
+                    "orderable": false,
+                    "defaultContent": "",
+                    "responsivePriority": 4
+                }
+            ],
+            "order": [[0, "desc"]],
+            "language": lang === 'th' ? {
+                "lengthMenu": "แสดง _MENU_ รายการ",
+                "zeroRecords": "ไม่พบข้อมูล",
+                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+                "infoEmpty": "ไม่มีรายการ",
+                "infoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)",
+                "search": "ค้นหา:",
+                "processing": "กำลังประมวลผล...",
+                "paginate": { "first": "หน้าแรก", "last": "หน้าสุดท้าย", "next": "ถัดไป", "previous": "ก่อนหน้า" }
+            } : {
+                "lengthMenu": "Show _MENU_ entries",
+                "zeroRecords": "No matching records found",
+                "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+                "infoEmpty": "No entries available",
+                "infoFiltered": "(filtered from _MAX_ total entries)",
+                "search": "Search:",
+                "processing": "Processing...",
+                "paginate": { "first": "First", "last": "Last", "next": "Next", "previous": "Previous" },
+                "emptyTable": "",
+                "infoEmpty": ""
+            }
+        });
+
+        // ... existing chart code ...
+        // Country Chart Data
+        const countryData = {{ country_stats | tojson | safe
+    }};
+
+    // Convert country codes to full names using Intl.DisplayNames
+    const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+    if (countryData.labels && countryData.labels.length > 0) {
+        countryData.originalLabels = [...countryData.labels]; // Keep original codes
+        countryData.labels = countryData.labels.map(code => {
+            try {
+                // Try to get full name, fallback to code if fail
+                return regionNames.of(code) || code;
+            } catch (e) {
+                return code;
+            }
+        });
+    }
+
+    // Color palette for charts
+    const colors = [
+        '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b',
+        '#858796', '#5a5c69', '#2e59d9', '#17a673', '#2c9faf'
+    ];
+
+    // Country Doughnut Chart
+    if (countryData.labels && countryData.labels.length > 0) {
+        const countryCtx = document.getElementById('countryChart').getContext('2d');
+        new Chart(countryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: countryData.labels,
+                datasets: [{
+                    data: countryData.data,
+                    backgroundColor: colors.slice(0, countryData.labels.length),
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 15,
+                            usePointStyle: true,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.raw / total) * 100).toFixed(1);
+                                return `${context.label}: ${context.raw} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('countryChart').parentElement.innerHTML =
+            '<div class="text-center text-muted py-5"><i class="fas fa-chart-pie fa-3x mb-3"></i><p>{{ translations["no_data"][lang] }}</p></div>';
+    }
+
+    // Monthly Chart Data
+    const monthlyData = {{ monthly_stats | tojson | safe }};
+
+    // Monthly Line Chart
+    if (monthlyData.labels && monthlyData.labels.length > 0) {
+        const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+        new Chart(monthlyCtx, {
+            type: 'line',
+            data: {
+                labels: monthlyData.labels,
+                datasets: [{
+                    label: '{{ translations["submissions"][lang] }}',
+                    data: monthlyData.data,
+                    borderColor: '#1cc88a',
+                    backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#1cc88a',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            precision: 0
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('monthlyChart').parentElement.innerHTML =
+            '<div class="text-center text-muted py-5"><i class="fas fa-chart-line fa-3x mb-3"></i><p>{{ translations["no_data"][lang] }}</p></div>';
+    }
+});
+</script>
+
+{% endblock %}
+
+{% set translations = {
+"phish_url": {"th": "ลิงก์ฟิชชิง", "en": "Phish URL"},
+"your_submitted": {"th": "คุณได้ส่งแล้ว", "en": "Your submitted"},
+"you_verify": {"th": "คุณได้ตรวจสอบแล้ว", "en": "You verify"},
+"country_stats": {"th": "สถิติตามประเทศ (10 อันดับ)", "en": "Top 10 Countries"},
+"monthly_stats": {"th": "สถิติรายเดือน (6 เดือนล่าสุด)", "en": "Monthly Submissions (Last 6 Months)"},
+"submissions": {"th": "รายงาน", "en": "Submissions"},
+"no_data": {"th": "ไม่มีข้อมูล", "en": "No data available"}
+} %}

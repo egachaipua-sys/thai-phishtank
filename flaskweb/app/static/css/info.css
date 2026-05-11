@@ -1,0 +1,99 @@
+.card {
+    max-width: 950px;
+    margin: 2rem auto;
+    padding: 1.5rem;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card h1 {
+    font-size: 1.5rem;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.card p {
+    font-size: 1rem;
+    color: #555;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+
+.card pre {
+    background-color: #f4f4f4;
+    border-left: 4px solid #007BFF;
+    padding: 1rem;
+    overflow-x: auto;
+    border-radius: 4px;
+    color: #333;
+    font-family: "Courier New", Courier, monospace;
+}
+
+.card a {
+    display: inline-block;
+    margin-top: 1rem;
+    text-decoration: none;
+    color: #fff;
+    background-color: #007BFF;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.cardinfo {
+    max-width: 100%;
+    margin: 2rem auto;
+    padding: 1.5rem;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card h1 {
+    font-size: 1.5rem;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.cardinfo p {
+    font-size: 1rem;
+    color: #555;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+
+.cardinfo pre {
+    background-color: #f4f4f4;
+    border-left: 4px solid #007BFF;
+    padding: 1rem;
+    overflow-x: auto;
+    border-radius: 4px;
+    color: #333;
+    font-family: "Courier New", Courier, monospace;
+}
+
+.cardinfo a {
+    display: inline-block;
+    margin-top: 1rem;
+    text-decoration: none;
+    color: #fff;
+    background-color: #007BFF;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.cardinfo img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+code {
+    font-family: "Mitr", serif;
+}

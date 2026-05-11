@@ -1,0 +1,199 @@
+{
+  "report_title": "Cybersecurity In-depth Analysis: Risks of Whitelisting Shared Domains",
+  "last_updated": "2026-01-14",
+  "threat_categories": [
+    {
+      "category": "Cloud Infrastructure & Object Storage",
+      "providers": [
+        {
+          "name": "Microsoft Azure",
+          "domains": [
+            "blob.core.windows.net",
+            "web.core.windows.net",
+            "azurewebsites.net",
+            "cloudapp.net",
+            "cloudapp.azure.com",
+            "trafficmanager.net",
+            "azure-api.net",
+            "azureedge.net"
+          ],
+          "risk_level": "Critical"
+        },
+        {
+          "name": "Amazon Web Services (AWS)",
+          "domains": [
+            "s3.amazonaws.com",
+            "cloudfront.net",
+            "elasticbeanstalk.com",
+            "execute-api.amazonaws.com",
+            "elb.amazonaws.com",
+            "amplifyapp.com"
+          ],
+          "risk_level": "Critical"
+        },
+        {
+          "name": "Google Cloud Platform (GCP)",
+          "domains": [
+            "storage.googleapis.com",
+            "web.app",
+            "firebaseapp.com",
+            "run.app",
+            "appspot.com",
+            "cloudfunctions.net",
+            "googleusercontent.com"
+          ],
+          "risk_level": "Critical"
+        }
+      ]
+    },
+    {
+      "category": "PaaS & Static Hosting",
+      "platforms": [
+        {
+          "name": "Modern Hosting",
+          "domains": [
+            "vercel.app",
+            "now.sh",
+            "netlify.app",
+            "netlify.com",
+            "pages.dev",
+            "workers.dev",
+            "herokuapp.com",
+            "railway.app",
+            "up.railway.app",
+            "onrender.com",
+            "render.com",
+            "fly.dev",
+            "glitch.me",
+            "replit.dev",
+            "replit.app",
+            "repl.co",
+            "csb.app",
+            "codesandbox.io",
+            "webcontainer.io",
+            "stackblitz.io",
+            "surge.sh",
+            "ondigitalocean.app",
+            "deno.dev",
+            "on.fleek.co",
+            "000webhostapp.com"
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Dynamic DNS & Tunneling",
+      "services": [
+        {
+          "name": "DDNS Providers",
+          "domains": [
+            "ddns.net",
+            "ddnsking.com",
+            "3utilities.com",
+            "bounceme.net",
+            "freedynamicdns.net",
+            "hopto.org",
+            "myftp.biz",
+            "servebeer.com",
+            "zapto.org",
+            "sytes.net",
+            "afraid.org",
+            "mooo.com",
+            "chickenkiller.com",
+            "crabdance.com",
+            "ignorelist.com",
+            "strangled.net",
+            "us.to",
+            "uk.to",
+            "duckdns.org",
+            "dynu.com",
+            "mywire.org",
+            "changeip.com"
+          ]
+        },
+        {
+          "name": "Tunneling Services",
+          "domains": [
+            "ngrok.io",
+            "ngrok-free.app",
+            "ngrok.app",
+            "localtunnel.me",
+            "lt.op",
+            "serveo.net",
+            "pinggy.io",
+            "a.pinggy.io",
+            "packetriot.net"
+          ]
+        }
+      ]
+    },
+    {
+      "category": "SaaS & Instructional Phishing",
+      "platforms": [
+        "notion.site",
+        "canva.site",
+        "my.canva.site",
+        "sites.google.com",
+        "docs.google.com",
+        "forms.gle",
+        "carrd.co",
+        "webflow.io",
+        "wixsite.com",
+        "weebly.com",
+        "squarespace.com",
+        "typeform.com",
+        "airtable.com",
+        "coda.io",
+        "trello.com",
+        "miro.com",
+        "figma.com"
+      ]
+    },
+    {
+      "category": "Code Repositories & Docs",
+      "domains": [
+        "github.io",
+        "gitlab.io",
+        "bitbucket.io",
+        "readthedocs.io",
+        "gitbook.io"
+      ]
+    },
+    {
+      "category": "URL Shorteners & Link-in-Bio",
+      "domains": [
+        "linktr.ee",
+        "lnk.bio",
+        "bio.link",
+        "beacons.ai",
+        "bit.ly",
+        "tinyurl.com",
+        "t.co",
+        "is.gd",
+        "rb.gy",
+        "shorturl.at",
+        "rebrand.ly",
+        "goo.gl",
+        "ow.ly",
+        "buff.ly"
+      ]
+    },
+    {
+      "category": "Web3 & IPFS Gateways",
+      "domains": [
+        "ipfs.io",
+        "dweb.link",
+        "cf-ipfs.com",
+        "gateway.ipfs.io"
+      ]
+    },
+    {
+      "category": "Additional Blogs",
+      "domains": [
+        "blogspot.com",
+        "wordpress.com",
+        "tumblr.com"
+      ]
+    }
+  ]
+}

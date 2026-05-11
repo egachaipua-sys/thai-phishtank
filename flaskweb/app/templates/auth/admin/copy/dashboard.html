@@ -1,0 +1,74 @@
+{% extends "auth/admin/base.html" %}
+{% block title %}Thai Phish Tank | Dashboard{% endblock %}
+{% block firstname %}{{ session.get('user_firstname') }}{% endblock %}
+{% block lastname %}{{ session.get('user_lastname') }}{% endblock %}
+{% block link %}
+<link href="{{ url_for('static', filename='css/info.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-xl-4 col-md-6">
+        <div class="card border-left-success shadow py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                           <h5>{{ translations["phish_url"][lang] }}</h5>  </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{total}}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-6">
+        <div class="card border-left-info shadow py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1"><h5>{{ translations["your_submitted"][lang] }}</h5>
+                        </div>
+                        <div class="row no-gutters align-items-center">
+                            <div class="col-auto">
+                                <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{submit}}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-6">
+        <div class="card border-left-warning shadow py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            <h5>{{ translations["you_verify"][lang] }}</h5></div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{verify}}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-comments fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% set translations = {
+    "phish_url": {"th": "ลิงก์ฟิชชิง", "en": "Phish URL"},
+    "your_submitted": {"th": "คุณได้ส่งแล้ว", "en": "Your submitted"},
+    "you_verify": {"th": "คุณได้ตรวจสอบแล้ว", "en": "You verify"}
+} %}

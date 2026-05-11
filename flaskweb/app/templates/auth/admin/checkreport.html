@@ -1,0 +1,489 @@
+{% extends "auth/admin/base.html" %}
+{% block title %}Thai Phish Tank | Check Report{% endblock %}
+{% block firstname %}{{ session.get('user_firstname') }}{% endblock %}
+{% block lastname %}{{ session.get('user_lastname') }}{% endblock %}
+{% block style %}
+<link href="{{ url_for('static', filename='css/table-styles.css') }}" rel="stylesheet">
+<link href="https://cdn.datatables.net/1.13.1/css/dataTables.bootstrap4.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap4.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-column flex-md-row justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary mb-2 mb-md-0">{{ translations["title"][lang] }}</h6>
+            <div class="d-flex flex-column flex-md-row gap-2 align-items-center">
+                <!-- Filter Dropdown -->
+                <div class="mr-0 mr-md-2 mb-2 mb-md-0">
+                    <select id="verifiedFilter" class="form-control form-control-sm" style="width: 150px;">
+                        <option value="">{{ translations["all_status"][lang] }}</option>
+                        <option value="yes">{{ translations["verified_only"][lang] }}</option>
+                        <option value="no">{{ translations["not_verified_only"][lang] }}</option>
+                    </select>
+                </div>
+                <div class="button-group">
+                    <button id="verifySelectedBtn" class="btn btn-success btn-sm" disabled>{{
+                        translations["verify_selected"][lang] }}</button>
+                    <button id="deleteSelectedBtn" class="btn btn-danger btn-sm" disabled>{{
+                        translations["delete_selected"][lang] }}</button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered type-check-report" id="reportsTable" width="100%"
+                    cellspacing="0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th class="text-center" width="5%">No.</th>
+                            <th class="text-center" width="30%">{{ translations["url"][lang] }}</th>
+                            <th class="text-center" width="8%">{{ translations["verifited"][lang] }}</th>
+                            <th class="text-center" width="15%">{{ translations["reporter"][lang] }}</th>
+                            <th class="text-center" width="15%">{{ translations["report_date"][lang] }}</th>
+                            <th class="text-center" width="8%">{{ translations["verify_single"][lang] }}</th>
+                            <th class="text-center" width="8%">{{ translations["delete_single"][lang] }}</th>
+                            <th class="text-center" width="5%">
+                                {{ translations["select"][lang] }} <br> <input type="checkbox" id="selectAllCheckbox">
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.1/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
+<script>
+    (function ($) {
+        $(document).ready(function () {
+            const lang = "{{ lang }}";
+
+            const translations = {
+                "success_title": { "th": "สำเร็จ", "en": "Success" },
+                "error_title": { "th": "ข้อผิดพลาด", "en": "Error" },
+                "processing_title": { "th": "กำลังประมวลผล...", "en": "Processing..." },
+                "processing_text": { "th": "กรุณารอสักครู่", "en": "Please wait..." },
+                "confirm_delete_title": { "th": "ยืนยันการลบ?", "en": "Confirm Deletion?" },
+                "confirm_delete_text": { "th": "คุณแน่ใจหรือไม่ที่จะลบรายการนี้?", "en": "Are you sure you want to delete this item?" },
+                "confirm_verify_title": { "th": "ยืนยันการตรวจสอบ?", "en": "Confirm Verification?" },
+                "confirm_verify_text": { "th": "คุณต้องการยืนยันรายการนี้ใช่หรือไม่?", "en": "Do you want to verify this item?" },
+                "yes": { "th": "ใช่", "en": "Yes" },
+                "no": { "th": "ไม่", "en": "No" },
+                "delete": { "th": "ลบ", "en": "Delete" },
+                "cancel": { "th": "ยกเลิก", "en": "Cancel" },
+                "verify": { "th": "ยืนยัน", "en": "Verify" },
+                "verified": { "th": "ยืนยันแล้ว", "en": "Verified" },
+                "failed_to_load": { "th": "ไม่สามารถโหลดข้อมูลได้", "en": "Failed to load data" },
+                "network_error": { "th": "ขัดข้องทางเครือข่าย", "en": "Network error" }
+            };
+
+            function t(key) {
+                return translations[key] ? translations[key][lang] : key;
+            }
+
+            // Initialize DataTables with server-side processing
+            const table = $('#reportsTable').DataTable({
+                "processing": true,
+                "serverSide": true,
+                "responsive": false, // Disable responsive plugin to allow custom CSS card view
+                "autoWidth": false,
+                "ajax": {
+                    "url": "{{ url_for('controller.get_check_reports_data') }}",
+                    "type": "POST",
+                    "data": function (d) {
+                        d.verified_status = $('#verifiedFilter').val();
+                    },
+                    "dataSrc": function (json) {
+                        return json.data;
+                    },
+                    "error": function (xhr, error, thrown) {
+                        console.error("DataTables AJAX error:", error, thrown);
+                        Swal.fire(t('error_title'), t('failed_to_load'), 'error');
+                    }
+                },
+                "columns": [
+                    {
+                        "data": null,
+                        "render": function (data, type, row, meta) {
+                            return meta.row + meta.settings._iDisplayStart + 1;
+                        },
+                        "orderable": false,
+                        "className": "text-center",
+                        "responsivePriority": 1
+                    },
+                    {
+                        "data": "url",
+                        "render": function (data) {
+                            return '<div class="text-break text-primary">' + data + '</div>';
+                        },
+                        "orderable": false,
+                        "responsivePriority": 2
+                    },
+                    {
+                        "data": null,
+                        "render": function (data) {
+                            const verified = data.verified || data.verifited;
+                            if (verified === 'yes') {
+                                return '<span class="text-success">' + t('yes') + '</span>';
+                            }
+                            return '<span class="text-danger">' + t('no') + '</span>';
+                        },
+                        "orderable": false,
+                        "className": "text-center",
+                        "responsivePriority": 3
+                    },
+                    {
+                        "data": "reporter",
+                        "render": function (data) {
+                            return data || '-';
+                        },
+                        "defaultContent": "-",
+                        "orderable": false,
+                        "className": "text-center",
+                        "responsivePriority": 6
+                    },
+                    {
+                        "data": "submission_time",
+                        "render": function (data) {
+                            if (data) {
+                                const date = new Date(data);
+                                return date.toLocaleString(lang === 'th' ? 'th-TH' : 'en-US');
+                            }
+                            return '-';
+                        },
+                        "orderable": false,
+                        "className": "text-center",
+                        "responsivePriority": 7
+                    },
+                    {
+                        "data": null,
+                        "render": function (data) {
+                            const verified = data.verified || data.verifited;
+                            if (verified === 'yes') {
+                                return '<span class="text-secondary">' + t('verified') + '</span>';
+                            }
+                            return '<span class="text-warning verify-report-btn" style="cursor: pointer;" data-id="' + data._id + '" data-url="' + data.url + '">' + t('verify') + '</span>';
+                        },
+                        "orderable": false,
+                        "className": "text-center",
+                        "responsivePriority": 4
+                    },
+                    {
+                        "data": null,
+                        "render": function (data) {
+                            return '<span class="text-danger delete-report-btn" style="cursor: pointer;" data-id="' + data._id + '">' + t('delete') + '</span>';
+                        },
+                        "orderable": false,
+                        "className": "text-center",
+                        "responsivePriority": 5
+                    },
+                    {
+                        "data": null,
+                        "render": function (data) {
+                            return '<input type="checkbox" class="report-checkbox" data-id="' + data._id + '" data-url="' + data.url + '">';
+                        },
+                        "orderable": false,
+                        "className": "text-center",
+                        "responsivePriority": 1
+                    }
+                ],
+                "pageLength": 20,
+                "lengthMenu": [20, 50, 100],
+                "order": [],
+                "language": lang === 'th' ? {
+                    "processing": "กำลังดำเนินการ...",
+                    "search": "ค้นหา:",
+                    "lengthMenu": "แสดง _MENU_ รายการ",
+                    "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+                    "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
+                    "infoFiltered": "(กรองข้อมูลจากทั้งหมด _MAX_ รายการ)",
+                    "loadingRecords": "กำลังโหลดข้อมูล...",
+                    "zeroRecords": "ไม่พบข้อมูล",
+                    "emptyTable": "ไม่มีข้อมูลในตาราง",
+                    "paginate": {
+                        "first": "หน้าแรก",
+                        "previous": "ก่อนหน้า",
+                        "next": "ถัดไป",
+                        "last": "หน้าสุดท้าย"
+                    },
+                    "aria": {
+                        "sortAscending": ": เปิดใช้งานเพื่อเรียงลำดับจากน้อยไปมาก",
+                        "sortDescending": ": เปิดใช้งานเพื่อเรียงลำดับจากมากไปน้อย"
+                    }
+                } : {
+                    "processing": "Processing...",
+                    "search": "Search:",
+                    "lengthMenu": "Show _MENU_ entries",
+                    "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+                    "infoEmpty": "Showing 0 to 0 of 0 entries",
+                    "infoFiltered": "(filtered from _MAX_ total entries)",
+                    "loadingRecords": "Loading...",
+                    "zeroRecords": "No matching records found",
+                    "emptyTable": "No data available in table",
+                    "paginate": {
+                        "first": "First",
+                        "previous": "Previous",
+                        "next": "Next",
+                        "last": "Last"
+                    },
+                    "aria": {
+                        "sortAscending": ": activate to sort column ascending",
+                        "sortDescending": ": activate to sort column descending"
+                    }
+                }
+            });
+
+            // Handle Verify Single
+            $(document).on('click', '.verify-report-btn', function () {
+                const reportId = $(this).data('id');
+                const reportUrl = $(this).data('url');
+                const $btn = $(this);
+
+                Swal.fire({
+                    title: t('confirm_verify_title'),
+                    text: t('confirm_verify_text'),
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: t('yes'),
+                    cancelButtonText: t('cancel')
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: t('processing_title'),
+                            text: t('processing_text'),
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+
+                        fetch("{{ url_for('controller.verify_report') }}", {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ url: reportUrl })
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                // ตรวจสอบ prediction จาก API
+                                const prediction = data.prediction || '';
+                                const isPhishing = prediction === 'phishing' || (data.verifited === 'yes' && prediction !== 'safe' && prediction !== 'not_found');
+
+                                if (data.status === 'success' && isPhishing) {
+                                    // URL เป็น phishing - แสดง yes
+                                    Swal.fire(t('success_title'), data.message || t('verified'), 'success')
+                                        .then(() => table.ajax.reload(null, false));
+                                } else if (prediction === 'safe' || prediction === 'not_found' || data.status === 'error') {
+                                    // URL ไม่ใช่ phishing หรือหาไม่เจอ - แสดง no และปิดปุ่ม verify
+                                    const notPhishingMsg = lang === 'th'
+                                        ? 'URL นี้ไม่ใช่ฟิชชิง หรือไม่พบในฐานข้อมูล'
+                                        : 'This URL is not phishing or not found in database';
+
+                                    Swal.fire({
+                                        icon: 'info',
+                                        title: lang === 'th' ? 'ไม่พบเป็นฟิชชิง' : 'Not Phishing',
+                                        text: data.message || notPhishingMsg
+                                    }).then(() => {
+                                        // อัพเดท UI: เปลี่ยนปุ่มเป็น disabled และแสดง "no"
+                                        $btn.removeClass('verify-report-btn text-warning')
+                                            .addClass('text-secondary')
+                                            .css('cursor', 'default')
+                                            .removeAttr('data-id')
+                                            .removeAttr('data-url')
+                                            .text(t('verify'));
+
+                                        // Reload table เพื่อแสดงสถานะ verified ล่าสุด
+                                        table.ajax.reload(null, false);
+                                    });
+                                } else {
+                                    Swal.fire(t('error_title'), data.message || 'Error', 'error');
+                                }
+                            })
+                            .catch(err => {
+                                Swal.fire(t('error_title'), 'Network Error', 'error');
+                            });
+                    }
+                });
+            });
+
+            // Handle Delete Single
+            $(document).on('click', '.delete-report-btn', function () {
+                const reportId = $(this).data('id');
+
+                Swal.fire({
+                    title: t('confirm_delete_title'),
+                    text: t('confirm_delete_text'),
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: t('delete'),
+                    cancelButtonText: t('cancel'),
+                    confirmButtonColor: '#d33'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: t('processing_title'),
+                            text: t('processing_text'),
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+
+                        fetch('/controller/delete_report/' + reportId, {
+                            method: 'POST'
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    Swal.fire(t('success_title'), data.message, 'success')
+                                        .then(() => table.ajax.reload(null, false));
+                                } else {
+                                    Swal.fire(t('error_title'), data.error || data.message, 'error');
+                                }
+                            })
+                            .catch(err => Swal.fire(t('error_title'), 'Network error', 'error'));
+                    }
+                });
+            });
+
+            // Verify Selected
+            $('#verifySelectedBtn').on('click', function () {
+                const selectedIds = getSelectedIds();
+                if (selectedIds.length === 0) return;
+
+                Swal.fire({
+                    title: t('confirm_verify_title'),
+                    text: `${t('confirm_verify_text')} (${selectedIds.length})`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: t('yes'),
+                    cancelButtonText: t('cancel')
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        performAction('/controller/verify-selected-reports', selectedIds);
+                    }
+                });
+            });
+
+            // Delete Selected
+            $('#deleteSelectedBtn').on('click', function () {
+                const selectedIds = getSelectedIds();
+                if (selectedIds.length === 0) return;
+
+                Swal.fire({
+                    title: t('confirm_delete_title'),
+                    text: `${t('confirm_delete_text')} (${selectedIds.length})`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: t('delete'),
+                    cancelButtonText: t('cancel'),
+                    confirmButtonColor: '#d33'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        performAction('/controller/delete-selected-reports', selectedIds);
+                    }
+                });
+            });
+
+            // Helper: Get Selected IDs
+            function getSelectedIds() {
+                const ids = [];
+                $('.report-checkbox:checked').each(function () {
+                    ids.push($(this).data('id'));
+                });
+                return ids;
+            }
+
+            // Helper: Select All
+            $('#selectAllCheckbox').on('change', function () {
+                $('.report-checkbox').prop('checked', this.checked);
+                updateSelectedCount();
+            });
+
+            // Reset select all when table redraws
+            table.on('draw', function () {
+                $('#selectAllCheckbox').prop('checked', false);
+                updateSelectedCount();
+            });
+
+            // Helper: Update Count (Enable/Disable buttons)
+            $(document).on('change', '.report-checkbox', function () {
+                updateSelectedCount();
+            });
+
+            function updateSelectedCount() {
+                const count = $('.report-checkbox:checked').length;
+                const btnVerify = $('#verifySelectedBtn');
+                const btnDelete = $('#deleteSelectedBtn');
+
+                if (count > 0) {
+                    btnVerify.prop('disabled', false);
+                    btnDelete.prop('disabled', false);
+                } else {
+                    btnVerify.prop('disabled', true);
+                    btnDelete.prop('disabled', true);
+                }
+            }
+
+            // Helper: Perform AJAX Action
+            function performAction(url, ids) {
+                Swal.fire({
+                    title: t('processing_title'),
+                    text: t('processing_text'),
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ report_ids: ids })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            Swal.fire(t('success_title'), data.message, 'success')
+                                .then(() => table.ajax.reload(null, false));
+                        } else {
+                            Swal.fire(t('error_title'), data.error || data.message, 'error');
+                        }
+                    })
+                    .catch(err => {
+                        Swal.fire(t('error_title'), t('network_error'), 'error');
+                    });
+            }
+
+            // Handle Filter Change
+            $('#verifiedFilter').on('change', function () {
+                table.ajax.reload();
+            });
+        });
+    })(jQuery);
+</script>
+{% endblock %}
+
+{% set translations = {
+"title": {"th": "ตรวจสอบข้อมูล", "en": "Check Information"},
+"search_placeholder": {"th": "ค้นหา...", "en": "Search..."},
+"no": {"th": "ไม่", "en": "No"},
+"yes": {"th": "ใช่", "en": "Yes"},
+"url": {"th": "URL", "en": "URL"},
+"verifited": {"th": "ตรวจสอบแล้ว", "en": "Verified"},
+"reporter": {"th": "ผู้รายงาน", "en": "Reporter"},
+"report_date": {"th": "วันที่รายงาน", "en": "Report Date"},
+"verify_single": {"th": "ยืนยัน", "en": "Verify"},
+"delete_single": {"th": "ลบ", "en": "Delete"},
+"delete_selected": {"th": "ลบที่เลือก", "en": "Delete Selected"},
+"verify_selected": {"th": "ยืนยันที่เลือก", "en": "Verify Selected"},
+"showing": {"th": "กำลังแสดง", "en": "Showing"},
+"to": {"th": "ถึง", "en": "to"},
+"of": {"th": "จาก", "en": "of"},
+"entries": {"th": "รายการ", "en": "entries"},
+"select": {"th": "เลือกทั้งหมด", "en": "Select All"},
+"all_status": {"th": "สถานะทั้งหมด", "en": "All Status"},
+"verified_only": {"th": "ตรวจสอบแล้ว", "en": "Verified Only"},
+"not_verified_only": {"th": "ยังไม่ตรวจสอบ", "en": "Not Verified Only"}
+} %}

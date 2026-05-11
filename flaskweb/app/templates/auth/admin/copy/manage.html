@@ -1,0 +1,159 @@
+{% extends "auth/admin/base.html" %}
+
+{% block title %}Thai Phish Tank | Manage Users{% endblock %}
+
+{% block firstname %}{{ session.get('user_firstname') }}{% endblock %}
+{% block lastname %}{{ session.get('user_lastname') }}{% endblock %}
+
+{% block link %}
+<link href="{{ url_for('static', filename='css/table-styles.css') }}" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">{{ translations["user_info"][lang] }}</h6>
+            <div class="d-flex flex-column flex-md-row gap-2">
+                <button id="addSelectedBtn" class="btn btn-success btn-sm" disabled>{{ translations["add_selected"][lang] }}</button>
+                &nbsp;
+                <button id="deleteSelectedBtn" class="btn btn-danger btn-sm" disabled>{{ translations["delete_selected"][lang] }}</button>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <!-- Search -->
+            <div class="mb-3">
+                <div class="input-group col-md-4 px-0">
+                    <input type="text" id="searchInput" class="form-control bg-light border-1"
+                        placeholder="{{ translations['search_placeholder'][lang] }}" aria-label="Search"
+                        aria-describedby="basic-addon2">
+                    <div class="input-group-append">
+                        <button class="btn btn-primary" type="button">
+                            <i class="fas fa-search fa-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered" id="reportsTable" width="100%" cellspacing="0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th class="text-center sortable" width="3%">No.<br><i class="fas fa-sort"></i></th>
+                            <th class="text-center sortable" width="10%">{{ translations["id"][lang] }}<br><i class="fas fa-sort"></i></th>
+                            <th class="text-center sortable" width="5%">{{ translations["firstname"][lang] }}<br><i class="fas fa-sort"></i></th>
+                            <th class="text-center sortable" width="5%">{{ translations["lastname"][lang] }}<br><i class="fas fa-sort"></i></th>
+                            <th class="text-center sortable" width="10%">{{ translations["email"][lang] }}<br><i class="fas fa-sort"></i></th>
+                            <th class="text-center sortable" width="10%">{{ translations["organization"][lang] }}<br><i class="fas fa-sort"></i></th>
+                            <th class="text-center sortable" width="3%">{{ translations["role"][lang] }}<br><i class="fas fa-sort"></i></th>
+                            <th class="text-center sortable" width="3%">{{ translations["confirmed"][lang] }}<br><i class="fas fa-sort"></i></th>
+                            <th class="text-center sortable" width="3%">{{ translations["member"][lang] }}<br><i class="fas fa-sort"></i></th>
+                            <th class="text-center sortable" width="3%">{{ translations["delete"][lang] }}<br><i class="fas fa-sort"></i></th>
+                            <th class="text-center" width="3%">
+                                {{ translations["select"][lang] }}<br>
+                                <input type="checkbox" id="selectAllCheckbox">
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody style="display: none;">
+                        {% for list in lists %}
+                        <tr>
+                            <td class="text-center">{{ loop.index }}</td>
+                            <td class="text-center">{{ list._id }}</td>
+                            <td class="text-center">{{ list.firstname }}</td>
+                            <td class="text-center">{{ list.lastname }}</td>
+                            <td class="text-center">{{ list.email }}</td>
+                            <td class="text-center">{{ list.organization }}</td>
+                            <td class="text-center">
+                                {% if list.role == 'user' %}
+                                    <span class="text-danger">{{ translations["user_role"][lang] }}</span>
+                                {% else %}
+                                    <span class="text-success">{{ translations["member_role"][lang] }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if list.confirmed %}
+                                    <span class="text-success">{{ translations["confirmed_true"][lang] }}</span>
+                                {% else %}
+                                    <span class="text-danger">{{ translations["confirmed_false"][lang] }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="text-success add-member-btn" style="cursor: pointer;"
+                                    data-url="{{ url_for('auth.add_member', user_id=list._id) }}">
+                                    {{ translations["add_member"][lang] }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="text-danger delete-user-btn" style="cursor: pointer;"
+                                    data-url="{{ url_for('auth.delete_user', user_id=list._id) }}">
+                                    {{ translations["delete"][lang] }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <input type="checkbox" class="report-checkbox" data-id="{{ list._id }}">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="row mt-3 flex-column flex-md-row">
+                <div class="col-md-5 mb-2 mb-md-0">
+                    <div class="dataTables_info text-center text-md-left" role="status" aria-live="polite">
+                        {{ translations["showing"][lang] }}
+                        <span id="showingStart">0</span>
+                        {{ translations["to"][lang] }}
+                        <span id="showingEnd">0</span>
+                        {{ translations["of"][lang] }}
+                        <span id="totalEntries">0</span>
+                        <span id="totalEntriesText">{{ translations["entries"][lang] }}</span>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="dataTables_paginate paging_simple_numbers d-flex justify-content-center justify-content-md-end"
+                        id="pagination">
+                        <ul class="pagination mb-0 flex-wrap justify-content-center justify-content-md-end">
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/member_manage.js') }}"></script>
+{% endblock %}
+
+{% set translations = {
+    "user_info": {"th": "ข้อมูลผู้ใช้", "en": "User Information"},
+    "search_placeholder": {"th": "ค้นหา...", "en": "Search..."},
+    "id": {"th": "รหัส", "en": "ID"},
+    "firstname": {"th": "ชื่อ", "en": "Firstname"},
+    "lastname": {"th": "นามสกุล", "en": "Lastname"},
+    "email": {"th": "อีเมล", "en": "Email"},
+    "organization": {"th": "องค์กร", "en": "Organization"},
+    "role": {"th": "บทบาท", "en": "Role"},
+    "member": {"th": "สมาชิก", "en": "Member"},
+    "delete": {"th": "ลบ", "en": "Delete"},
+    "user_role": {"th": "ผู้ใช้", "en": "User"},
+    "member_role": {"th": "สมาชิก", "en": "Member"},
+    "confirmed_true": { "th": "ยืนยันแล้ว", "en": "Confirmed" },
+    "confirmed_false": { "th": "ยังไม่ได้ยืนยัน", "en": "Not Confirmed" },
+    "add_member": {"th": "เพิ่ม", "en": "Add"},
+    "showing": {"th": "กำลังแสดง", "en": "Showing"},
+    "to": {"th": "ถึง", "en": "to"},
+    "of": {"th": "จาก", "en": "of"},
+    "entries": {"th": "รายการ", "en": "entries"},
+    "confirmed": {"th": "ยืนยัน", "en": "Confirm"},
+    "add_selected": {"th": "เพิ่มที่เลือก", "en": "Add Selected"},
+    "delete_selected": {"th": "ลบที่เลือก", "en": "Delete Selected"},
+    "select": {"th": "เลือกทั้งหมด", "en": "Select All"}
+} %}

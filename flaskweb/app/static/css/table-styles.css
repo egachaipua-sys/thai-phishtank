@@ -1,0 +1,918 @@
+/* ===== Base Styles ===== */
+.sortable {
+    cursor: pointer;
+}
+
+.sortable i {
+    margin-left: 5px;
+    opacity: 0.3;
+}
+
+.sortable.sorted-asc i:before {
+    content: "\f0de";
+    opacity: 1;
+}
+
+.sortable.sorted-desc i:before {
+    content: "\f0dd";
+    opacity: 1;
+}
+
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+}
+
+/* ===== DataTables Responsive Extension Styles ===== */
+
+/* Table responsive wrapper */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* URL column - smart wrapping */
+.text-break {
+    word-break: break-all !important;
+    overflow-wrap: break-word !important;
+    white-space: normal !important;
+    hyphens: auto;
+}
+
+/* DataTables wrapper */
+.dataTables_wrapper {
+    width: 100%;
+    padding: 0;
+}
+
+/* ====================================
+   RESPONSIVE EXTENSION - EXPAND BUTTON (+/-)
+   ==================================== */
+
+/* Plus button for collapsed rows */
+table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control,
+table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control {
+    position: relative;
+    padding-left: 35px !important;
+    cursor: pointer;
+}
+
+table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before,
+table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
+    position: absolute;
+    top: 50%;
+    left: 8px;
+    height: 20px;
+    width: 20px;
+    margin-top: -10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    border-radius: 50%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    font-family: 'Font Awesome 5 Free', 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 12px;
+    line-height: 1;
+    content: '+';
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    transition: all 0.2s ease;
+}
+
+table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:hover:before,
+table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:hover:before {
+    transform: scale(1.1);
+    box-shadow: 0 3px 8px rgba(13, 110, 253, 0.4);
+}
+
+/* Minus button for expanded rows */
+table.dataTable.dtr-inline.collapsed>tbody>tr.parent>td.dtr-control:before,
+table.dataTable.dtr-inline.collapsed>tbody>tr.parent>th.dtr-control:before {
+    content: '-';
+    background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
+}
+
+table.dataTable.dtr-inline.collapsed>tbody>tr.parent>td.dtr-control:hover:before,
+table.dataTable.dtr-inline.collapsed>tbody>tr.parent>th.dtr-control:hover:before {
+    box-shadow: 0 3px 8px rgba(220, 53, 69, 0.4);
+}
+
+/* Child row (expanded details) styling */
+table.dataTable>tbody>tr.child {
+    background-color: #f8f9fa;
+}
+
+table.dataTable>tbody>tr.child:hover {
+    background-color: #f8f9fa !important;
+}
+
+table.dataTable>tbody>tr.child ul.dtr-details {
+    display: block;
+    list-style-type: none;
+    padding: 10px 15px;
+    margin: 0;
+    width: 100%;
+}
+
+table.dataTable>tbody>tr.child ul.dtr-details>li {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+table.dataTable>tbody>tr.child ul.dtr-details>li:last-child {
+    border-bottom: none;
+}
+
+table.dataTable>tbody>tr.child span.dtr-title {
+    font-weight: 600;
+    color: #495057;
+    min-width: 120px;
+    margin-right: 15px;
+    flex-shrink: 0;
+}
+
+table.dataTable>tbody>tr.child span.dtr-data {
+    color: #212529;
+    word-break: break-word;
+}
+
+/* ==================================== */
+@media screen and (max-width: 767px) {
+
+    /* ==========================================================================
+       General Mobile Table Reset (Card View)
+       ========================================================================== */
+    table.dataTable.type-report,
+    table.dataTable.type-check-report,
+    table.dataTable.type-users,
+    table.dataTable#phishingReportsTable {
+        display: block;
+        width: 100%;
+        border: none !important;
+    }
+
+    table.dataTable.type-report thead,
+    table.dataTable.type-check-report thead,
+    table.dataTable.type-users thead,
+    table.dataTable#phishingReportsTable thead {
+        display: none;
+    }
+
+    table.dataTable.type-report tbody,
+    table.dataTable.type-check-report tbody,
+    table.dataTable.type-users tbody,
+    table.dataTable#phishingReportsTable tbody {
+        display: block;
+        width: 100%;
+    }
+
+    table.dataTable.type-report tbody tr,
+    table.dataTable.type-check-report tbody tr,
+    table.dataTable.type-users tbody tr,
+    table.dataTable#phishingReportsTable tbody tr {
+        display: flex;
+        flex-wrap: wrap;
+        background-color: #fff !important;
+        border: 1px solid #e3e6f0;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 15px;
+        padding: 15px;
+        position: relative;
+        padding-bottom: 50px;
+    }
+
+    table.dataTable#phishingReportsTable tbody tr {
+        padding-bottom: 15px !important;
+    }
+
+    table.dataTable tbody td {
+        border: none !important;
+        padding: 5px 0 !important;
+        background: transparent !important;
+        display: block;
+        width: auto;
+    }
+
+    /* Common Card Header/Filter Adjustments */
+    .card-header {
+        padding: 15px !important;
+        background-color: #f8f9fc;
+        border-bottom: 1px solid #e3e6f0;
+    }
+
+    .card-header .d-flex {
+        flex-direction: column !important;
+        gap: 10px !important;
+        width: 100%;
+        align-items: center !important;
+    }
+
+    .card-header h6 {
+        margin-bottom: 5px !important;
+        text-align: center;
+        width: 100%;
+        font-size: 1.1rem;
+    }
+
+    .card-header .mr-0 {
+        width: 100%;
+        margin-right: 0 !important;
+        margin-bottom: 5px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .card-header select#verifiedFilter {
+        width: 100% !important;
+        max-width: 100%;
+    }
+
+    .card-header .button-group,
+    .card-header .gap-2 {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .card-header .btn {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Common DataTables Controls (Mobile Optimized) */
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter {
+        display: block;
+        width: 100%;
+        text-align: center;
+        margin-bottom: 15px;
+    }
+
+    /* Responsive Show Entries */
+    .dataTables_wrapper .dataTables_length label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        width: 100%;
+        font-size: 13px;
+    }
+
+    .dataTables_wrapper .dataTables_length select {
+        width: auto !important;
+        padding: 5px 25px 5px 10px;
+    }
+
+    /* Responsive Search Box: Stacked for space */
+    .dataTables_wrapper .dataTables_filter label {
+        display: flex;
+        flex-direction: column;
+        /* Stack label and input */
+        align-items: stretch;
+        width: 100%;
+        text-align: left;
+        font-size: 13px;
+        color: #858796;
+    }
+
+    .dataTables_wrapper .dataTables_filter input {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 42px;
+        margin: 8px 0 !important;
+        padding: 8px 15px;
+        border-radius: 8px !important;
+        border: 1px solid #d1d3e2;
+        box-sizing: border-box;
+        font-family: inherit;
+    }
+
+
+    /* ==========================================================================
+       Pagination Fixes for Mobile (Standard Style)
+       ========================================================================== */
+    .dataTables_wrapper .dataTables_paginate {
+        justify-content: center;
+    }
+
+    .dataTables_wrapper .dataTables_paginate ul.pagination {
+        display: flex;
+        justify-content: center !important;
+        margin-top: 10px !important;
+        flex-wrap: wrap !important;
+        /* Key to preventing overflow */
+        gap: 0;
+        /* Connected items */
+    }
+
+    /* ALL PAGINATION BUTTONS SAME HEIGHT/ALIGNMENT */
+    .dataTables_wrapper .dataTables_paginate .page-item .page-link {
+        border-radius: 0 !important;
+        margin: 0 !important;
+        border: 1px solid #dee2e6;
+        color: #4e73df;
+        padding: 0 10px !important;
+        /* Remove vertical padding, use flex center */
+        font-size: 13px !important;
+        height: 36px !important;
+        /* UNIFIED HEIGHT */
+        min-width: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #fff;
+    }
+
+    /* First and Last rounding */
+    .dataTables_wrapper .dataTables_paginate .page-item:first-child .page-link {
+        border-top-left-radius: 6px !important;
+        border-bottom-left-radius: 6px !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .page-item:last-child .page-link {
+        border-top-right-radius: 6px !important;
+        border-bottom-right-radius: 6px !important;
+    }
+
+    /* Active State */
+    .dataTables_wrapper .dataTables_paginate .page-item.active .page-link {
+        background-color: #4e73df !important;
+        border-color: #4e73df !important;
+        color: white !important;
+        z-index: 1;
+    }
+
+    /* Disabled State */
+    .dataTables_wrapper .dataTables_paginate .page-item.disabled .page-link {
+        color: #d1d3e2 !important;
+        background-color: #fff;
+        border-color: #dee2e6;
+    }
+
+    /* Mobile Text Replacement (Prev/Next) With Consistent Sizing */
+    .dataTables_wrapper .dataTables_paginate .page-item.previous .page-link,
+    .dataTables_wrapper .dataTables_paginate .page-item.next .page-link {
+        font-size: 0 !important;
+        /* Hide original */
+        position: relative;
+        min-width: 50px;
+        /* Bit wider for text */
+        height: 36px !important;
+        /* Ensure match */
+    }
+
+    .dataTables_wrapper .dataTables_paginate .page-item.previous .page-link:before {
+        content: "Prev";
+        font-size: 13px;
+        visibility: visible;
+        display: block;
+        font-weight: 600;
+        line-height: normal;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .page-item.next .page-link:before {
+        content: "Next";
+        font-size: 13px;
+        visibility: visible;
+        display: block;
+        font-weight: 600;
+        line-height: normal;
+    }
+
+    /* Ensure disabled text is visible */
+    .dataTables_wrapper .dataTables_paginate .page-item.disabled .page-link:before {
+        color: #858796;
+        opacity: 0.6;
+    }
+
+
+    /* ==========================================================================
+       Specific: TYPE-REPORT (table.html)
+       Cols: 1.No(Hide), 2.URL(Big), 3.Verify(Status), 4.Reporter, 5.Date, 6.Delete, 7.Checkbox
+       ========================================================================== */
+
+    /* 1. Hide Index */
+    table.dataTable.type-report tbody td:nth-child(1) {
+        display: none;
+    }
+
+    /* 2. URL (Primary info) */
+    table.dataTable.type-report tbody td:nth-child(2) {
+        width: 100%;
+        order: 1;
+        margin-bottom: 8px;
+    }
+
+    table.dataTable.type-report tbody td:nth-child(2) .text-break {
+        font-size: 16px;
+        font-weight: 600;
+        color: #4e73df;
+    }
+
+    /* 4. Reporter & 5. Date (Secondary) */
+    table.dataTable.type-report tbody td:nth-child(4),
+    table.dataTable.type-report tbody td:nth-child(5) {
+        order: 2;
+        font-size: 12px;
+        color: #858796;
+        margin-right: 12px;
+        display: inline-block;
+    }
+
+    /* 3. Verified STATUS (Bottom Left) */
+    table.dataTable.type-report tbody td:nth-child(3) {
+        display: inline-block !important;
+        /* Force show */
+        position: absolute;
+        bottom: 12px;
+        left: 15px;
+        z-index: 2;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    table.dataTable.type-report tbody td:nth-child(3) .text-success {
+        color: #1cc88a !important;
+        background: rgba(28, 200, 138, 0.1);
+        padding: 5px 12px;
+        border-radius: 20px;
+    }
+
+    table.dataTable.type-report tbody td:nth-child(3) .text-danger {
+        color: #e74a3b !important;
+        background: rgba(231, 74, 59, 0.1);
+        padding: 5px 12px;
+        border-radius: 20px;
+    }
+
+    /* 6. Delete Button (Bottom Right) - FIXED OVERLAP */
+    table.dataTable.type-report tbody td:nth-child(6) {
+        position: absolute;
+        bottom: 12px;
+        right: 60px;
+        /* Moved left to avoid overlap */
+        z-index: 2;
+        left: auto !important;
+    }
+
+    table.dataTable.type-report tbody td:nth-child(6) .delete-report-btn {
+        background-color: #e74a3b;
+        color: white !important;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        box-shadow: 0 2px 4px rgba(231, 74, 59, 0.3);
+    }
+
+    /* 7. Checkbox (Bottom Right) */
+    table.dataTable.type-report tbody td:nth-child(7) {
+        position: absolute;
+        bottom: 12px;
+        right: 15px;
+        z-index: 2;
+    }
+
+    table.dataTable.type-report tbody td:nth-child(7) input[type="checkbox"] {
+        width: 24px;
+        height: 24px;
+    }
+
+
+    /* ==========================================================================
+       Specific: TYPE-CHECK-REPORT (checkreport.html)
+       Cols: 1.No, 2.URL, 3.Verify(Status), 4.Reporter, 5.Date, 6.VerifyBtn, 7.DeleteBtn, 8.Checkbox
+       ========================================================================== */
+
+    /* 1. Hide Index */
+    table.dataTable.type-check-report tbody td:nth-child(1) {
+        display: none !important;
+    }
+
+    /* 2. URL */
+    table.dataTable.type-check-report tbody td:nth-child(2) {
+        width: 100%;
+        order: 1;
+        margin-bottom: 8px;
+    }
+
+    table.dataTable.type-check-report tbody td:nth-child(2) .text-break {
+        font-size: 16px;
+        font-weight: 600;
+        color: #4e73df;
+    }
+
+    /* 3. Status (Verified/No) - Show text beside URL or hidden? 
+       Actually, checkreport usually shows Verify Button, and Status column is text.
+       Let's put Status column below URL. */
+    table.dataTable.type-check-report tbody td:nth-child(3) {
+        order: 1;
+        /* With URL */
+        width: 100%;
+        margin-bottom: 5px;
+        font-size: 13px;
+    }
+
+    table.dataTable.type-check-report tbody td:nth-child(3):before {
+        content: "Status: ";
+        color: #858796;
+    }
+
+    /* 4/5. Reporter/Date */
+    table.dataTable.type-check-report tbody td:nth-child(4),
+    table.dataTable.type-check-report tbody td:nth-child(5) {
+        order: 2;
+        font-size: 12px;
+        color: #858796;
+        margin-right: 12px;
+        display: inline-block;
+    }
+
+    /* 6. Verify Button (Bottom Left) */
+    table.dataTable.type-check-report tbody td:nth-child(6) {
+        position: absolute;
+        bottom: 12px;
+        left: 15px;
+        z-index: 2;
+    }
+
+    /* 7. Delete Button (Bottom Left - Next to Verify) */
+    table.dataTable.type-check-report tbody td:nth-child(7) {
+        position: absolute;
+        bottom: 12px;
+        left: 90px;
+        /* Shifted right of Verify btn */
+        z-index: 2;
+    }
+
+    /* Style the buttons in check report */
+    table.dataTable.type-check-report tbody .verify-report-btn,
+    table.dataTable.type-check-report tbody .delete-report-btn,
+    table.dataTable.type-check-report tbody .text-secondary {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        color: #fff !important;
+        display: inline-block;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        min-width: 65px;
+    }
+
+    table.dataTable.type-check-report tbody .verify-report-btn {
+        background: #f6c23e;
+    }
+
+    /* Warning */
+    table.dataTable.type-check-report tbody .delete-report-btn {
+        background: #e74a3b;
+    }
+
+    /* Danger */
+    table.dataTable.type-check-report tbody .text-secondary {
+        background: #858796;
+    }
+
+    /* Verified (Grey/Inactive) - CHANGED */
+
+    /* 8. Checkbox (Bottom Right) */
+    table.dataTable.type-check-report tbody td:nth-child(8) {
+        position: absolute;
+        bottom: 12px;
+        right: 15px;
+        z-index: 2;
+    }
+
+    table.dataTable.type-check-report tbody td:nth-child(8) input[type="checkbox"] {
+        width: 24px;
+        height: 24px;
+    }
+
+
+    /* ==========================================================================
+       Specific: TYPE-USERS (manage.html)
+       Cols: 1.No, 2.First, 3.Last, 4.Email, 5.Org, 6.Role, 7.Confirmed, 8.AddBtn, 9.DelBtn, 10.Checkbox
+       ========================================================================== */
+    /* 1. Hide No */
+    table.dataTable.type-users tbody td:nth-child(1) {
+        display: none !important;
+    }
+
+    /* 2 & 3. Name (Primary) */
+    table.dataTable.type-users tbody td:nth-child(2),
+    table.dataTable.type-users tbody td:nth-child(3) {
+        order: 1;
+        font-size: 16px;
+        font-weight: 600;
+        color: #4e73df;
+        display: inline-block;
+        margin-right: 5px;
+    }
+
+    /* 4. Email (Secondary block) */
+    table.dataTable.type-users tbody td:nth-child(4) {
+        order: 2;
+        width: 100%;
+        font-size: 13px;
+        color: #5a5c69;
+        margin-bottom: 8px;
+    }
+
+    /* 5, 6, 7. Metadata (Org, Role, Status) */
+    table.dataTable.type-users tbody td:nth-child(5),
+    /* Org */
+    table.dataTable.type-users tbody td:nth-child(6),
+    /* Role */
+    table.dataTable.type-users tbody td:nth-child(7)
+
+    /* Confirmed */
+        {
+        order: 3;
+        font-size: 12px;
+        margin-right: 15px;
+        display: inline-block;
+        margin-bottom: 5px;
+    }
+
+    table.dataTable.type-users tbody td:nth-child(5):before {
+        content: "Org: ";
+        font-weight: bold;
+    }
+
+    table.dataTable.type-users tbody td:nth-child(7):before {
+        content: "Status: ";
+        font-weight: bold;
+    }
+
+    /* 8. Add Btn (Bottom Left) */
+    table.dataTable.type-users tbody td:nth-child(8) {
+        position: absolute;
+        bottom: 12px;
+        left: 15px;
+        z-index: 2;
+    }
+
+    /* 9. Delete Btn (Bottom Left next to Add) */
+    table.dataTable.type-users tbody td:nth-child(9) {
+        position: absolute;
+        bottom: 12px;
+        left: 80px;
+        z-index: 2;
+    }
+
+    table.dataTable.type-users tbody .add-member-btn,
+    table.dataTable.type-users tbody .delete-user-btn {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        color: #fff !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    table.dataTable.type-users tbody .add-member-btn {
+        background: #1cc88a;
+    }
+
+    table.dataTable.type-users tbody .delete-user-btn {
+        background: #e74a3b;
+    }
+
+    /* 10. Checkbox (Bottom Right) */
+    table.dataTable.type-users tbody td:nth-child(10) {
+        position: absolute;
+        bottom: 12px;
+        right: 15px;
+        z-index: 2;
+    }
+
+    table.dataTable.type-users tbody td:nth-child(10) input[type="checkbox"] {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* ==========================================================================
+       Public Phish Table (#phishingReportsTable) - Keep roughly same
+       ========================================================================== */
+    #phishingReportsTable tbody td:nth-child(1) {
+        width: 100%;
+        order: 0;
+        font-size: 13px;
+        color: #333;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        font-weight: 600;
+    }
+
+    #phishingReportsTable tbody td:nth-child(1):before {
+        content: "ID: ";
+        display: inline;
+        background: transparent;
+        color: inherit;
+        width: auto;
+        height: auto;
+        border-radius: 0;
+        margin-right: 5px;
+        font-weight: bold;
+        font-size: 13px;
+        box-shadow: none;
+    }
+
+    #phishingReportsTable tbody td:nth-child(2) {
+        width: 100%;
+        order: 1;
+        margin-bottom: 15px;
+        font-weight: 700;
+        font-size: 16px;
+        line-height: 1.4;
+        word-break: break-all;
+        color: #1a202c;
+    }
+
+    #phishingReportsTable tbody td:nth-child(2) .text-break {
+        word-break: break-all;
+        overflow-wrap: break-word;
+        white-space: normal;
+    }
+
+    #phishingReportsTable tbody td:nth-child(3) {
+        order: 2;
+        width: auto;
+        margin-right: 15px;
+        margin-top: 5px;
+    }
+
+    #phishingReportsTable tbody td:nth-child(4) {
+        order: 3;
+        width: auto;
+        margin-top: 5px;
+    }
+
+    /* ==========================================================================
+       FIX: Pagination & Wrapper Overflows
+       ========================================================================== */
+    /* Disable horizontal scroll on wrapper since we use Vertical Cards */
+    .table-responsive {
+        overflow-x: visible !important;
+    }
+
+    /* Fix Bootstrap Row negative margins inside DataTables wrapper */
+    .dataTables_wrapper .row {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        width: 100% !important;
+    }
+
+    .dataTables_wrapper [class*="col-"] {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    /* Adjust Info Text */
+    .dataTables_wrapper .dataTables_info {
+        text-align: center !important;
+        font-size: 12px !important;
+        color: #858796 !important;
+        padding-top: 0 !important;
+        margin-bottom: 5px;
+    }
+}
+
+/* ====================================
+   TABLET STYLES (768px - 991px)
+   ==================================== */
+@media screen and (min-width: 768px) and (max-width: 991px) {
+    table.dataTable {
+        font-size: 0.9rem;
+    }
+
+    table.dataTable th,
+    table.dataTable td {
+        padding: 10px 8px;
+    }
+
+    .text-break {
+        max-width: 200px;
+        font-size: 0.85rem;
+    }
+
+    .dataTables_wrapper .dataTables_filter input {
+        width: 200px;
+    }
+}
+
+/* ====================================
+   DESKTOP STYLES (992px+)
+   ==================================== */
+@media screen and (min-width: 992px) {
+    .text-break {
+        max-width: 350px;
+    }
+
+    table.dataTable th,
+    table.dataTable td {
+        padding: 12px 10px;
+    }
+}
+
+/* ====================================
+   COMMON STYLES (All screens)
+   ==================================== */
+
+/* Badge styling */
+.badge {
+    white-space: nowrap;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+}
+
+/* Touch-friendly buttons */
+.btn-sm {
+    min-height: 36px;
+    min-width: 36px;
+    padding: 8px 12px;
+}
+
+/* Action text links */
+span[style*="cursor: pointer"] {
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+span[style*="cursor: pointer"]:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #0d6efd;
+}
+
+/* Processing indicator */
+.dataTables_processing {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+    padding: 15px 25px;
+}
+
+/* Empty table message */
+.dataTables_empty {
+    text-align: center;
+    padding: 40px 20px !important;
+    color: #6c757d;
+    font-size: 15px;
+}
+
+/* Scrollbar styling */
+.table-responsive::-webkit-scrollbar {
+    height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Row hover effect */
+table.dataTable tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05) !important;
+}
+
+/* Alternate row colors */
+table.dataTable tbody tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+table.dataTable tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}

@@ -1,0 +1,73 @@
+{% extends "auth/admin/base.html" %}
+{% block title %}Thai Phish Tank | Information{% endblock %}
+{% block firstname %}{{ session.get('user_firstname') }}{% endblock %}
+{% block lastname %}{{ session.get('user_lastname') }}{% endblock %}
+{% block style %}
+    <link href="{{ url_for('static', filename='css/info.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+    <div class="card">
+        <h1>{{ translations["api_guide"][lang] }}</h1>
+        <p>{{ translations["example_usage"][lang] }}</p>
+
+        <h4>1. {{ translations["request_api_key"][lang] }}</h4>
+        <p>{{ translations["after_login"][lang] }}</p>
+        <img src="{{ url_for('static', filename='img/info.PNG') }}" alt="Request API Key">
+        <p>{{ translations["copy_api_key"][lang] }}</p>
+
+        <h4>2. {{ translations["use_curl"][lang] }}</h4>
+        <p>{{ translations["send_post"][lang] }}</p>
+        <pre>
+curl -X POST "https://thaiphishtank.org/api/phishing-url?url=URL&api_key=YOUR_API_KEY"
+</pre>
+        <p>
+            <ul>
+                <li>{{ translations["replace_url"][lang] }}</li>
+                <li>{{ translations["replace_key"][lang] }}</li>
+            </ul>
+        </p>
+
+        <h4>3. {{ translations["use_python"][lang] }}</h4>
+        <p>{{ translations["use_requests"][lang] }}</p>
+        <pre>
+import requests
+
+url = "https://thaiphishtank.org/api/phishing-url"
+params = {
+    "url": "http://example.com",
+    "api_key": "YOUR_API_KEY"
+}
+
+response = requests.post(url, params=params)
+
+if response.status_code == 200:
+    print(response.json())
+else:
+    print("Error:", response.status_code)
+</pre>
+        <p>{{ translations["example_explanation"][lang] }}</p>
+        <ul>
+            <li>{{ translations["url_to_check"][lang] }}</li>
+            <li>{{ translations["api_key_received"][lang] }}</li>
+        </ul>
+    </div>
+{% endblock %}
+
+{% set translations = {
+    "title": {"th": "PhishTank TH | ข้อมูล", "en": "PhishTank TH | Information"},
+    "back_home": {"th": "กลับหน้าหลัก", "en": "Back to Home"},
+    "api_guide": {"th": "คู่มือการใช้งาน API Key", "en": "API Key Usage Guide"},
+    "example_usage": {"th": "ตัวอย่างการใช้งาน API สำหรับตรวจสอบ URL ด้วย API Key:", "en": "Example usage of the API for URL verification with an API Key:"},
+    "request_api_key": {"th": "การขอรับ API Key", "en": "Requesting an API Key"},
+    "after_login": {"th": "หลังจากเข้าสู่ระบบแล้วให้กดเลือกเมนู ขอรับ API Key:", "en": "After logging in, select the 'Request API Key' menu:"},
+    "copy_api_key": {"th": "กดปุ่ม ขอรับ API Key ตามรูปด้านบน จากนั้นเมื่อ API Key ปรากฏบนหน้าจอ ให้กดปุ่ม คัดลอก เพื่อนำไปใช้งานในระบบ", "en": "Click the 'Request API Key' button as shown above. Once the API Key appears on the screen, click 'Copy' to use it in the system."},
+    "use_curl": {"th": "ใช้งานผ่านคำสั่ง curl", "en": "Using curl"},
+    "send_post": {"th": "ส่งคำขอ POST ผ่านคำสั่ง curl ด้วยตัวอย่างดังนี้:", "en": "Send a POST request using curl with the following example:"},
+    "replace_url": {"th": "เปลี่ยน URL เป็น URL ที่ต้องการตรวจสอบ", "en": "Replace URL with the URL to be checked"},
+    "replace_key": {"th": "เปลี่ยน YOUR_API_KEY เป็นคีย์ที่ได้รับ", "en": "Replace YOUR_API_KEY with your assigned key"},
+    "use_python": {"th": "ใช้งานผ่าน Python", "en": "Using Python"},
+    "use_requests": {"th": "คุณสามารถใช้ไลบรารี requests เพื่อส่งคำขอ POST ไปยัง API:", "en": "You can use the requests library to send a POST request to the API:"},
+    "example_explanation": {"th": "คำอธิบายตัวอย่าง:", "en": "Example explanation:"},
+    "url_to_check": {"th": "URL ที่ต้องการตรวจสอบ", "en": "URL to check"},
+    "api_key_received": {"th": "API Key ที่ได้รับจากระบบ", "en": "API Key obtained from the system"}
+} %}

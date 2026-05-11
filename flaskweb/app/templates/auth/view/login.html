@@ -1,0 +1,50 @@
+{% extends "auth/view/base.html" %}
+{% block title %}Thai Phish Tank | Login{% endblock %}
+{% block link %}
+<link href="https://cdn.datatables.net/1.13.1/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css" rel="stylesheet">
+<script src="https://www.google.com/recaptcha/api.js?render=6LeKSZ0rAAAAAFV1_u7CJHPwf5XrtHdKvXw2AAIP"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="image-container">
+            <img src="{{ url_for('static', filename='img/LOGO.png') }}?v=2" alt="logo" class="centered-image">
+        </div>
+        <h2 class="text-center">{{ translations["login"][lang] }}</h2>
+        <form class="user" action="{{ url_for('auth.login') }}" method="POST">
+            <input type="email" name="email" class="form-control"
+                placeholder="{{ translations['email_placeholder'][lang] }}">
+            <input type="password" name="password" class="form-control"
+                placeholder="{{ translations['password_placeholder'][lang] }}">
+            <button type="submit" class="btn btn-user">
+                {{ translations["login_button"][lang] }}
+            </button>
+        </form>
+        <hr>
+        <div class="text-center mt-3">
+            <a class="small" href="{{ url_for('auth.forgot') }}">{{ translations["forgot_password"][lang] }}</a> |
+            <a class="small" href="{{ url_for('auth.register') }}">{{ translations["create_account"][lang] }}</a> |
+            <a class="small" href="{{ url_for('view.index') }}">{{ translations["back_home"][lang] }}</a>
+        </div>
+        <div class="d-flex justify-content-center mt-4">
+            <a class="btn btn-sm btn-outline-primary me-2" href="?lang=th">TH</a>
+            <a class="btn btn-sm btn-outline-primary" href="?lang=en">EN</a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ url_for('static', filename='js/login.js') }}?v=2"></script>
+{% endblock %}
+
+{% set translations = {
+"login": {"th": "เข้าสู่ระบบ", "en": "Login"},
+"email_placeholder": {"th": "อีเมลของคุณ", "en": "Your email"},
+"password_placeholder": {"th": "รหัสผ่านของคุณ", "en": "Your password"},
+"login_button": {"th": "ลงชื่อเข้าใช้", "en": "Sign In"},
+"forgot_password": {"th": "ลืมรหัสผ่าน?", "en": "Forgot Password?"},
+"create_account": {"th": "สร้างบัญชีใหม่", "en": "Create Account"},
+"back_home": {"th": "กลับหน้าหลัก", "en": "Back to Home"}
+} %}

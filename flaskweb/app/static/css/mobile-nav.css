@@ -1,0 +1,212 @@
+/* Mobile Bottom Navigation & Bottom Sheet Styles */
+@media (max-width: 767px) {
+
+  /* Hide Default Desktop Sidebar and Top Hamburger */
+  #wrapper #accordionSidebar {
+    display: none !important;
+  }
+
+  #content-wrapper2 #content nav button#sidebarToggleTop {
+    display: none !important;
+  }
+
+  /* Adjust Body/Footer padding to accommodate Bottom Nav */
+  body {
+    padding-bottom: 80px;
+    /* Space for nav */
+  }
+
+  /* Fixed Bottom Navigation Bar */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 65px;
+    background: #ffffff;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: 0 -2px 15px rgba(0, 0, 0, 0.08);
+    /* Soft shadow */
+    z-index: 1030;
+    /* Above typical content but below modal/sheet */
+    padding-bottom: env(safe-area-inset-bottom);
+    /* iOS Safe Area */
+    border-top: 1px solid #eaecf4;
+  }
+
+  /* Navigation Items */
+  .bottom-nav .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #d1d3e2;
+    /* Inactive color (Grey) */
+    font-size: 10px;
+    font-weight: 500;
+    height: 100%;
+    transition: all 0.2s ease;
+  }
+
+  .bottom-nav .nav-item i {
+    font-size: 20px;
+    margin-bottom: 4px;
+    transition: transform 0.2s ease;
+  }
+
+  /* Active State */
+  .bottom-nav .nav-item.active {
+    color: #4e73df;
+    /* Primary Blue */
+  }
+
+  .bottom-nav .nav-item.active i {
+    transform: translateY(-2px);
+  }
+
+  /* Ripple Effect on Click (Optional enhancement) */
+  .bottom-nav .nav-item:active {
+    background-color: #f8f9fc;
+  }
+
+  /* =========================
+       Bottom Sheet (Dropdown)
+       ========================= */
+
+  /* Dark Overlay */
+  .bottom-sheet-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    /* Dim background */
+    z-index: 1040;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(2px);
+    /* Modern blur effect */
+  }
+
+  .bottom-sheet-overlay.show {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Sheet Container */
+  .bottom-sheet {
+    position: fixed;
+    bottom: -100%;
+    /* Hidden by default */
+    left: 0;
+    width: 100%;
+    background: #ffffff;
+    z-index: 1050;
+    border-radius: 20px 20px 0 0;
+    /* Rounded top corners */
+    box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.15);
+    transition: bottom 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    /* Smooth slide */
+    padding-bottom: 30px;
+    /* Safe space */
+    padding-bottom: calc(30px + env(safe-area-inset-bottom));
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .bottom-sheet.show {
+    bottom: 0;
+  }
+
+  /* Sheet Handle (Visual Cue) */
+  .sheet-handle-bar {
+    width: 40px;
+    height: 5px;
+    background-color: #e3e6f0;
+    border-radius: 5px;
+    margin: 12px auto;
+  }
+
+  /* Sheet Header */
+  .sheet-header {
+    padding: 0 20px 15px 20px;
+    border-bottom: 1px solid #f8f9fc;
+  }
+
+  .sheet-header h5 {
+    margin: 0;
+    font-weight: 700;
+    color: #4e73df;
+  }
+
+  /* Sheet List Items */
+  .sheet-content {
+    padding: 10px 0;
+  }
+
+  .sheet-item {
+    display: flex;
+    align-items: center;
+    padding: 15px 25px;
+    text-decoration: none;
+    color: #5a5c69;
+    font-weight: 500;
+    font-size: 16px;
+    transition: background 0.2s;
+  }
+
+  .sheet-item:hover,
+  .sheet-item:active {
+    background-color: #f8f9fc;
+    text-decoration: none;
+    color: #4e73df;
+  }
+
+  .sheet-item i {
+    width: 30px;
+    font-size: 18px;
+    color: #d1d3e2;
+    /* Icon grey */
+    margin-right: 15px;
+    text-align: center;
+  }
+
+  .sheet-item.active {
+    color: #4e73df;
+    background-color: #eaecf4;
+    font-weight: 700;
+  }
+
+  .sheet-item.active i {
+    color: #4e73df;
+  }
+
+  /* =========================
+     Scroll To Top (Mobile Fix)
+     ========================= */
+  .scroll-to-top {
+    bottom: 85px !important;
+    /* Sit above the 65px + padding nav */
+    right: 20px !important;
+    width: 45px !important;
+    height: 45px !important;
+    line-height: 45px !important;
+    font-size: 18px !important;
+    z-index: 1025 !important;
+    /* Ensure it is clickable but below overlays */
+    background: rgba(78, 115, 223, 0.8) !important;
+    /* More visible blue */
+    border-radius: 50% !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  .scroll-to-top:hover {
+    background: #224abe !important;
+  }
+}

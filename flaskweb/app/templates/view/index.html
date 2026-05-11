@@ -1,0 +1,415 @@
+{% extends "view/base.html" %}
+{% block title %}Thai Phish Tank | Home{% endblock %}
+{% block link %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link href="https://cdn.datatables.net/1.13.1/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/table-styles.css') }}" rel="stylesheet">
+<script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.1/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
+<link href="{{ url_for('static', filename='css/index-style2.css') }}" rel="stylesheet">
+<script src="{{ url_for('static', filename='js/index.js') }}?v={{ range(1000, 9999) | random }}"></script>
+<script src="https://d3js.org/d3.v3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datamaps/0.5.9/datamaps.world.min.js"></script>
+
+{% endblock %}
+{% block content %}
+{% set translations = {
+"title": {"th": "PhishTank TH | หน้าแรก", "en": "PhishTank TH | Home"},
+"7_day_trends": {"th": "แนวโน้มฟิชชิง", "en": "Phishing Trends"},
+"active_phishing_sites": {"th": "เว็บไซต์ฟิชชิงที่ออนไลน์", "en": "Online Phishing Websites"},
+"phishing_today": {"th": "เว็บไซต์ฟิชชิงที่พบวันนี้", "en": "Phishing Websites Found Today"},
+"total_reports": {"th": "เว็บไซต์ฟิชชิงทั้งหมด", "en": "Total Phishing Websites"},
+"24_hour_activity": {"th": "กิจกรรมฟิชชิง", "en": "Phishing Activity"},
+"enter_url_check": {"th": "ตรวจสอบเว็บไซต์ฟิชชิง", "en": "Phishing Website Detection"},
+"enter_url_placeholder": {"th": "กรอก url ที่ต้องการตรวจสอบ", "en": "Please enter the URL you want to check."},
+"check_security": {"th": "ตรวจสอบ", "en": "Check"},
+"reported_sites": {"th": "รายงานเว็บไซต์ฟิชชิง", "en": "Reported Phishing Websites"},
+"status": {"th": "สถานะ", "en": "Status"},
+"verify": {"th": "การยืนยัน", "en": "Verify"},
+"online": {"th": "ออนไลน์", "en": "Online"},
+"offline": {"th": "ออฟไลน์", "en": "Offline"},
+"not_exist": {"th": "ไม่พบโดเมน", "en": "Not Exist"},
+"yes": {"th": "ยืนยัน", "en": "Yes"},
+"no": {"th": "ไม่", "en": "No"},
+"title_row": {"th": "เว็บไซต์ฟิชชิงที่ได้รับการยืนยันจากผู้ดูแลระบบแล้ว", "en": "Phishing websites verified by
+administrators"},
+} %}
+
+
+<div class="text-center mb-4">
+    <h6 class="text-muted fs-4">{{ translations["7_day_trends"][lang] }}</h6>
+    <div class="row justify-content-center text-center g-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h3 class="text-danger mb-2 fs-2">{{active}}</h3>
+                    <div class="text-muted fs-5">{{ translations["active_phishing_sites"][lang] }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h3 class="text-danger mb-2 fs-2">{{today}}</h3>
+                    <div class="text-muted fs-5">{{ translations["phishing_today"][lang] }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h3 class="text-danger mb-2 fs-2">{{total}}</h3>
+                    <div class="text-muted fs-5">{{ translations["total_reports"][lang] }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div>
+        <h6 class="mb-2">{{ translations["24_hour_activity"][lang] }}</h6>
+    </div>
+    <div class="datamaps-popup">
+        <div id="world-map"></div>
+        <input type="hidden" id="bubbles-data" value='{{ bubbles_data | tojson | safe }}'>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div>
+        <h6 class="mb-2">{{ translations["enter_url_check"][lang] }}</h6>
+    </div>
+    <div>
+        <form id="urlForm" method="post" class="input-group">
+            <input type="text" class="form-control" name="url" id="url"
+                placeholder="{{ translations['enter_url_placeholder'][lang] }}" required>
+            <button type="submit" class="btn btn-outline-primary">{{ translations["check_security"][lang] }}</button>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div>
+        <h6 class="mb-0">{{ translations["reported_sites"][lang] }}</h6>
+    </div>
+    <div>
+        <div class="table-responsive">
+            <table id="phishingReportsTable" class="table">
+                <thead>
+                    <tr>
+                        <th class="text-center" style="width: 10%;">ID</th>
+                        <th class="text-center" style="width: 15%;">URL</th>
+                        <th class="text-center" style="width: 10%;">{{ translations["status"][lang] }}</th>
+                        <th class="text-center" style="width: 10%;" title="{{ translations['title_row'][lang] }}">
+                            {{ translations['verify'][lang] }}&nbsp;<i class="fa fa-info-circle" aria-hidden="true"></i>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const lang = "{{ lang }}";
+
+        // Initializing DataTables with server-side processing and responsive
+        // Prevent reinitialize error
+        $.fn.dataTable.ext.errMode = 'none'; // Disable DataTables error alerts
+        if ($.fn.DataTable.isDataTable('#phishingReportsTable')) {
+            $('#phishingReportsTable').DataTable().destroy();
+        }
+        $('#phishingReportsTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "responsive": true,
+            "ajax": {
+                "url": "{{ url_for('controller.get_phishing_data') }}",
+                "type": "POST",
+                "dataSrc": function (json) {
+                    return json.data;
+                }
+            },
+            "columns": [
+                {
+                    "data": "phish_id",
+                    "render": function (data, type, row) {
+                        if (data && data !== '-') {
+                            // Use Flask url_for to generate base URL correctly
+                            var baseUrl = "{{ url_for('view.detail', phish_id='') }}";
+                            return '<a href="' + baseUrl + data + '">' + data + '</a>';
+                        }
+                        return 'No ID';
+                    },
+                    "orderable": false,
+                    "responsivePriority": 1
+                },
+                {
+                    "data": "url",
+                    "orderable": false,
+                    "render": function (data, type, row) {
+                        return '<div class="text-break">' + data + '</div>';
+                    },
+                    "responsivePriority": 2
+                },
+                {
+                    "data": "online",
+                    "className": "text-center",
+                    "render": function (data, type, row) {
+                        var statusText, badgeClass;
+                        if (data === 'yes' || data === 'online') {
+                            statusText = '{{ translations["online"][lang] }}';
+                            badgeClass = 'bg-success';
+                        } else if (data === 'not_exist') {
+                            statusText = '{{ translations["not_exist"][lang] }}';
+                            badgeClass = 'bg-secondary';
+                        } else {
+                            statusText = '{{ translations["offline"][lang] }}';
+                            badgeClass = 'bg-danger';
+                        }
+                        return '<span class="badge ' + badgeClass + '">' + statusText + '</span>';
+                    },
+                    "defaultContent": "",
+                    "orderable": false,
+                    "responsivePriority": 3
+                },
+                {
+                    "data": "verified",
+                    "className": "text-center",
+                    "render": function (data, type, row) {
+                        var verifyText = (data === 'yes') ? '{{ translations["yes"][lang] }}' : '{{ translations["no"][lang] }}';
+                        var badgeClass = (data === 'yes') ? 'bg-success' : 'bg-danger';
+                        return '<span class="badge ' + badgeClass + '">' + verifyText + '</span>';
+                    },
+                    "orderable": false,
+                    "defaultContent": "",
+                    "responsivePriority": 4
+                }
+            ],
+            "order": [[0, "desc"]],
+            "language": lang === 'th' ? {
+                "lengthMenu": "แสดง _MENU_ รายการ",
+                "zeroRecords": "ไม่พบข้อมูล",
+                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+                "infoEmpty": "ไม่มีรายการ",
+                "infoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)",
+                "search": "ค้นหา:",
+                "processing": "กำลังประมวลผล...",
+                "paginate": { "first": "หน้าแรก", "last": "หน้าสุดท้าย", "next": "ถัดไป", "previous": "ก่อนหน้า" }
+            } : {
+                "lengthMenu": "Show _MENU_ entries",
+                "zeroRecords": "No matching records found",
+                "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+                "infoEmpty": "No entries available",
+                "infoFiltered": "(filtered from _MAX_ total entries)",
+                "search": "Search:",
+                "processing": "Processing...",
+                "paginate": { "first": "First", "last": "Last", "next": "Next", "previous": "Previous" },
+                "emptyTable": "",
+                "infoEmpty": ""
+            }
+        });
+
+        const form = document.getElementById("urlForm");
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const url = document.getElementById("url").value.trim();
+
+            const translations = {
+                "error_title": { "th": "ข้อผิดพลาด!", "en": "Error!" },
+                "error_message": { "th": "กรุณากรอก URL ที่ต้องการตรวจสอบ", "en": "Please enter the URL to check" },
+                "checking_title": { "th": "กำลังตรวจสอบ...", "en": "Checking..." },
+                "checking_message": { "th": "กรุณารอสักครู่", "en": "Please wait..." },
+                "success_title": { "th": "ตรวจสอบ URL สำเร็จ", "en": "URL Check Successful" },
+                "safe": { "th": "ปลอดภัย", "en": "Safe" },
+                "phishing": { "th": "ฟิชชิง", "en": "Phishing" },
+                "api_error": { "th": "ไม่สามารถเชื่อมต่อกับ API ได้ โปรดตรวจสอบสถานะการเชื่อมต่อ", "en": "Cannot connect to API. Please check the connection status" },
+                "server_error": { "th": "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์", "en": "Internal server error" },
+                "not_found": { "th": "ไม่พบ API ที่คุณขอข้อมูล", "en": "API not found" },
+                "offline": { "th": "ไม่สามารถตรวจสอบได้", "en": "Unable to verify" },
+                "safe": { "th": "ปลอดภัย", "en": "Safe" },
+                "offline_status": { "th": "ออฟไลน์", "en": "Offline" },
+                "phishing": { "th": "ฟิชชิง", "en": "Phishing" },
+                "domain_not_exist": { "th": "โดเมนไม่มีอยู่จริง", "en": "Domain Does Not Exist" },
+                "ok_btn": { "th": "ตกลง", "en": "OK" },
+                "our_system_label": { "th": "ระบบของเรา", "en": "Our System" },
+                "safe_browsing_label": { "th": "Google Safe Browsing", "en": "Safe Browsing" },
+                "unknown": { "th": "ไม่ทราบ", "en": "Unknown" }
+            };
+
+            if (!url) {
+                Swal.fire({
+                    title: translations["error_title"][lang],
+                    text: translations["error_message"][lang],
+                    icon: 'error',
+                    showConfirmButton: true
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: translations["checking_title"][lang],
+                html: translations["checking_message"][lang],
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            setTimeout(() => {
+                fetch("{{ url_for('controller.check_url') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url: url })
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            if (response.status === 0) {
+                                throw new Error(translations["api_error"][lang]);
+                            } else if (response.status >= 500) {
+                                throw new Error(translations["server_error"][lang]);
+                            } else if (response.status === 404) {
+                                throw new Error(translations["not_found"][lang]);
+                            } else {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        let icon = 'info';
+                        let message = '';
+                        let title = lang === 'th' ? 'ตรวจสอบ URL สำเร็จ' : 'URL Check Successful';
+                        console.log(data);
+                        console.log("URL:", data.url);
+
+                        if (data.prediction === "phishing") {
+                            icon = 'warning';
+                            message = `
+                                <div style="text-align: center;">
+                                    <span style="color: #e67e22; font-weight: bold; font-size: 18px;">${translations["phishing"][lang]}</span>
+                                    <p style="color: #333; margin-top: 10px; line-height: 1.6;">${data.message}</p>
+                                </div>`;
+                        } else if (data.prediction === "offline") {
+                            icon = 'info';
+                            message = `
+                                <div style="text-align: center;">
+                                    <span style="color: #3498db; font-weight: bold; font-size: 18px;">${translations["offline_status"][lang]}</span>
+                                    <p style="color: #333; margin-top: 10px; line-height: 1.6;">${data.message}</p>
+                                </div>`;
+                        } else if (data.prediction === "split") {
+                            // กรณีผลไม่เหมือนกันระหว่าง Our System และ Safe Browsing
+                            icon = 'info';
+                            const ourSystem = data.our_system || "Unknown";
+                            const safeBrowsing = data.safe_browsing || "Unknown";
+
+                            // Get Translated Labels
+                            const ourSystemLabel = translations["our_system_label"][lang];
+                            const safeBrowsingLabel = translations["safe_browsing_label"][lang];
+
+                            // Translate Status Function
+                            const getTranslatedStatus = (status) => {
+                                if (status === 'Phishing') return translations["phishing"][lang];
+                                if (status === 'Safe') return translations["safe"][lang];
+                                return translations["unknown"][lang];
+                            };
+
+                            const ourSystemDisplay = getTranslatedStatus(ourSystem);
+                            const safeBrowsingDisplay = getTranslatedStatus(safeBrowsing);
+
+                            // กำหนดสีตามผลลัพธ์
+                            const getColor = (result) => {
+                                if (result === 'Phishing') return '#e74c3c';
+                                if (result === 'Safe') return '#27ae60';
+                                return '#3498db'; // Unknown = สีฟ้า
+                            };
+
+                            // สร้างข้อความหลัก (บรรทัดแรก)
+                            const mainMessage = data.message.split('\n')[0];
+
+                            message = `
+                                <div style="text-align: center;">
+                                    <p style="color: #333; margin-bottom: 20px; line-height: 1.6;">${mainMessage}</p>
+                                    <p style="margin: 5px 0;"><strong>${ourSystemLabel}:</strong> <span style="color: ${getColor(ourSystem)}; font-weight: bold;">${ourSystemDisplay}</span></p>
+                                    <p style="margin: 5px 0;"><strong>${safeBrowsingLabel}:</strong> <span style="color: ${getColor(safeBrowsing)}; font-weight: bold;">${safeBrowsingDisplay}</span></p>
+                                </div>`;
+                        } else if (data.prediction === "error") {
+                            // กรณีไม่สามารถสกัดคุณลักษณะ URL ได้
+                            icon = 'error';
+                            title = lang === 'th' ? 'เกิดข้อผิดพลาด' : 'Error';
+                            message = `
+                                <div style="text-align: center;">
+                                    <p style="color: #e74c3c; line-height: 1.6;">${data.message}</p>
+                                </div>`;
+                        } else if (data.prediction === "not_exist") {
+                            // กรณี Domain ไม่มีจริง (DNS lookup failed)
+                            icon = 'error';
+                            title = lang === 'th' ? 'ไม่พบ URL' : 'URL Not Found';
+                            message = `
+                                <div style="text-align: center;">
+                                    <span style="color: #e74c3c; font-weight: bold; font-size: 18px;">${translations["domain_not_exist"][lang]}</span>
+                                    <p style="color: #333; margin-top: 10px; line-height: 1.6;">${data.message}</p>
+                                </div>`;
+                        } else if (data.prediction === "unknown") {
+                            // กรณีไม่ทราบสถานะทั้งคู่
+                            icon = 'question';
+                            title = lang === 'th' ? 'สถานะไม่ชัดเจน' : 'Unknown Status';
+                            message = `
+                                <div style="text-align: center;">
+                                    <span style="color: #95a5a6; font-weight: bold; font-size: 18px;">${translations["unknown"][lang]}</span>
+                                    <p style="color: #333; margin-top: 10px; line-height: 1.6;">${data.message}</p>
+                                </div>`;
+                        } else {
+                            // Safe case
+                            icon = 'success';
+                            message = `
+                                <div style="text-align: center;">
+                                    <span style="color: #27ae60; font-weight: bold; font-size: 18px;">${translations["safe"][lang]}</span>
+                                    <p style="color: #333; margin-top: 10px; line-height: 1.6;">${data.message}</p>
+                                </div>`;
+                        }
+
+                        Swal.close();
+                        Swal.fire({
+                            title: title,
+                            html: message,
+                            icon: icon,
+                            showConfirmButton: true,
+                            confirmButtonColor: '#6c5ce7',
+                            confirmButtonText: translations["ok_btn"][lang]
+                        }).then(() => {
+                            document.getElementById("url").value = url;
+
+                            if (data.prediction !== "offline" && data.prediction !== "safe") {
+                                // Reload DataTables instead of location.reload() to be smoother
+                                $('#phishingReportsTable').DataTable().ajax.reload();
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        Swal.close();
+                        Swal.fire({
+                            title: translations["error_title"][lang],
+                            text: error.message,
+                            icon: 'error',
+                            showConfirmButton: true
+                        });
+                        console.error('Error:', error);
+                    });
+            }, 500);
+        });
+    });
+</script>
+
+{% endblock %}

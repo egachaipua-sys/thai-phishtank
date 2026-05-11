@@ -1,0 +1,12 @@
+[DATABASE]
+MONGO_DETAILS = mongodb://localhost:27017
+DATABASE_NAME = phishtank_th
+USER_COLLECTION = users
+BLACK_LIST = phish_url
+WHITE_LIST = white_url
+
+[API_KEY]
+API_KEY = YOUR_GOOGLE_SAFE_BROWSING_API_KEY_HERE
+
+[DOMAIN_NAME]
+DOMAIN_NAME = http://localhost:5000

@@ -1,0 +1,162 @@
+{% extends "auth/admin/base.html" %}
+{% block title %}Thai Phish Tank | Check Whitelist Report{% endblock %}
+{% block firstname %}{{ session.get('user_firstname') }}{% endblock %}
+{% block lastname %}{{ session.get('user_lastname') }}{% endblock %}
+{% block style %}
+<link href="{{ url_for('static', filename='css/table-styles.css') }}" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+      <h6 class="m-0 font-weight-bold text-primary">{{ translations["title"][lang] }}</h6>
+      <div class="d-flex flex-column flex-md-row gap-2">
+        <div class="button-group">
+          <button id="verifySelectedBtn" class="btn btn-success btn-sm" disabled>{{
+            translations["verify_selected"][lang] }}</button>
+          <button id="deleteSelectedBtn" class="btn btn-danger btn-sm" disabled>{{
+            translations["delete_selected"][lang] }}</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <div class="input-group col-md-4 px-0">
+          <input type="text" id="searchInput" class="form-control bg-light border-1"
+            placeholder="{{ translations['search_placeholder'][lang] }}" aria-label="Search"
+            aria-describedby="basic-addon2">
+          <div class="input-group-append">
+            <button class="btn btn-primary" type="button">
+              <i class="fas fa-search fa-sm"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <div class="table-responsive">
+          <div id="loading" class="text-center py-3" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+              <span class="sr-only">Loading...</span>
+            </div>
+          </div>
+          <table class="table table-hover table-bordered" id="reportsTable" width="100%" cellspacing="0">
+            <thead class="thead-light">
+              <tr>
+                <th class="text-center sortable" width="5%">
+                  No. <br> <i class="fas fa-sort"></i>
+                </th>
+                <th class="text-center sortable" width="10%">
+                  {{ translations["url"][lang] }} <br> <i class="fas fa-sort"></i>
+                </th>
+                <th class="text-center sortable" width="5%">
+                  {{ translations["verifited"][lang] }} <br> <i class="fas fa-sort"></i>
+                </th>
+                <th class="text-center sortable" width="10%">
+                  {{ translations["reporter"][lang] }} <br> <i class="fas fa-sort"></i>
+                </th>
+                <th class="text-center sortable" width="10%">
+                  {{ translations["report_date"][lang] }} <br> <i class="fas fa-sort"></i>
+                </th>
+                <th class="text-center sortable" width="5%">
+                  {{ translations["verify_single"][lang] }} <br> &nbsp;
+                </th>
+                <th class="text-center sortable" width="5%">
+                  {{ translations["delete_single"][lang] }} <br> &nbsp;
+                </th>
+                <th class="text-center" width="3%">
+                  {{ translations["select"][lang] }} <br> <input type="checkbox" id="selectAllCheckbox">
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for report in reports %}
+              <tr>
+                <td class="text-center">{{ loop.index }}</td>
+                <td class="text-primary" style="padding-left: 10px;">
+                  <p>{{ report.url }}</p>
+                </td>
+                <td class="text-center">
+                  {% if report.verified == 'yes' or report.verifited == 'yes' %}
+                  <span class="text-success">{{ translations["yes"][lang] }}</span>
+                  {% else %}
+                  <span class="text-danger">{{ translations["no"][lang] }}</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">{{ report.reporter }}</td>
+                <td class="text-center">{{ report.submission_time }}</td>
+                <td class="text-center">
+                  {% if report.verified == 'no' and report.verifited != 'yes' %}
+                  {# NOTE: For white list, we reuse the bulk verify logic for single item #}
+                  <span class="text-warning verify-report-btn" style="cursor: pointer;" data-id="{{ report._id }}">
+                    {{ translations["verify_single"][lang] }}
+                  </span>
+                  {% else %}
+                  <span class="text-secondary disabled">
+                    {{ translations["verify_single"][lang] }}
+                  </span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  <span class="text-danger delete-report-btn" style="cursor: pointer;" data-id="{{ report._id }}"
+                    data-url="{{ url_for('controller.whitedelete_report', report_id=report._id) }}">
+                    {{ translations["delete_single"][lang] }}
+                  </span>
+                </td>
+                <td class="text-center">
+                  <input type="checkbox" class="report-checkbox" data-id="{{ report._id }}" data-url="{{ report.url }}">
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="row mt-3 flex-column flex-md-row">
+        <div class="col-md-5 mb-2 mb-md-0">
+          <div class="dataTables_info text-center text-md-left" role="status" aria-live="polite">
+            {{ translations["showing"][lang] }}
+            <span id="showingStart">0</span>
+            {{ translations["to"][lang] }}
+            <span id="showingEnd">0</span>
+            {{ translations["of"][lang] }}
+            <span id="totalEntries">0</span>
+            <span id="totalEntriesText"></span>
+          </div>
+        </div>
+        <div class="col-md-7">
+          <div class="dataTables_paginate paging_simple_numbers d-flex justify-content-center justify-content-md-end"
+            id="pagination">
+            <ul class="pagination mb-0 flex-wrap justify-content-center justify-content-md-end">
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/whitecheck_report.js') }}?v=1.2"></script>
+{% endblock %}
+
+{% set translations = {
+"title": {"th": "ตรวจสอบข้อมูล Whitelist", "en": "Check Whitelist Information"},
+"search_placeholder": {"th": "ค้นหา...", "en": "Search..."},
+"no": {"th": "ไม่", "en": "No"},
+"yes": {"th": "ใช่", "en": "Yes"},
+"url": {"th": "URL", "en": "URL"},
+"verifited": {"th": "ตรวจสอบแล้ว", "en": "Verified"},
+"reporter": {"th": "ผู้รายงาน", "en": "Reporter"},
+"report_date": {"th": "วันที่รายงาน", "en": "Report Date"},
+"verify_single": {"th": "ยืนยัน", "en": "Verify"},
+"delete_single": {"th": "ลบ", "en": "Delete"},
+"delete_selected": {"th": "ลบที่เลือก", "en": "Delete Selected"},
+"verify_selected": {"th": "ยืนยันที่เลือก", "en": "Verify Selected"},
+"showing": {"th": "กำลังแสดง", "en": "Showing"},
+"to": {"th": "ถึง", "en": "to"},
+"of": {"th": "จาก", "en": "of"},
+"entries": {"th": "รายการ", "en": "entries"},
+"select": {"th": "เลือกทั้งหมด", "en": "Select All"},
+} %}

@@ -1,0 +1,56 @@
+{% extends "auth/admin/base.html" %}
+{% block title %}Thai Phish Tank | URL Report{% endblock %}
+{% block firstname %}{{ session.get('user_firstname') }}{% endblock %}
+{% block lastname %}{{ session.get('user_lastname') }}{% endblock %}
+{% block style %}
+<link href="{{ url_for('static', filename='css/table-styles.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/info.css') }}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.7.32/sweetalert2.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.7.32/sweetalert2.all.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="container mt-5">
+        <h2>{{ translations["report_legitimate_url"][lang] }}</h2>
+
+        <form id="reportForm" method="POST" action="{{ url_for('controller.report_legitimate') }}" enctype="multipart/form-data">
+            <div class="form-group mb-3">
+                <label for="url">{{ translations["url_label"][lang] }}</label>
+                <input type="url" class="form-control" id="url" name="url"
+                    placeholder="{{ translations['url_placeholder'][lang] }}">
+                <small class="form-text text-muted">{{ translations["url_or_csv_note"][lang] }}</small>
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="csvFile">{{ translations["csv_file_label"][lang] }}</label>
+                <input type="file" class="form-control" id="csvFile" name="csv_file" accept=".csv">
+                <small class="form-text text-muted">{{ translations["csv_file_note"][lang] }}</small>
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="reporter">{{ translations["reporter_label"][lang] }}</label>
+                <input type="text" class="form-control" id="reporter" name="reporter"
+                    value="{{ session.get('user_firstname', '') }} {{ session.get('user_lastname', '') }}" required readonly>
+            </div>
+
+            <button type="submit" class="btn btn-primary mt-3">
+                {{ translations["submit_report"][lang] }}
+            </button>
+        </form>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/whitereport.js') }}"></script>
+
+{% endblock %}
+
+{% set translations = {
+    "report_legitimate_url": {"th": "รายงาน URL ที่ปลอดภัย", "en": "Legitimate URL Report"},
+    "url_label": {"th": "URL", "en": "URL"},
+    "url_placeholder": {"th": "กรอก URL ที่ต้องการรายงาน", "en": "Enter the URL to report"},
+    "reporter_label": {"th": "ชื่อของคุณ", "en": "Your Name"},
+    "submit_report": {"th": "ส่งรายงาน", "en": "Submit Report"},
+    "csv_file_label": {"th": "ไฟล์ CSV (ไม่บังคับ)", "en": "CSV File (Optional)"},
+    "url_or_csv_note": {"th": "สำหรับรายงาน URL เดียว หรือใช้ไฟล์ CSV สำหรับหลาย URL", "en": "For single URL reports or use CSV files for multiple URLs."},
+    "csv_file_note": {"th": "ในไฟล์ CSV ให้วาง URL ทั้งหมดในคอลัมน์เดียวกัน (คอลัมน์แรก) โดยแบ่งเป็นแถวละ 1 URL", "en": "In the CSV file, place all URLs in the same column (the first column), with one URL per row."}
+} %}

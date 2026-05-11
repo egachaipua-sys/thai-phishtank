@@ -1,0 +1,39 @@
+{% extends "auth/view/base.html" %}
+{% block title %}Thai Phish Tank | Reset Password{% endblock %}
+{% block link %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://www.google.com/recaptcha/api.js?render=6LeKSZ0rAAAAAFV1_u7CJHPwf5XrtHdKvXw2AAIP"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="image-container">
+            <img src="{{ url_for('static', filename='img/LOGO.png') }}?v=2" alt="logo" class="centered-image">
+        </div>
+        <h2 class="text-center">{{ translations["reset_password_title"][lang] }}</h2>
+        <form class="user" id="recover-form" method="POST">
+            <input type="password" name="password" class="form-control"
+                placeholder="{{ translations['new_password_placeholder'][lang] }}">
+            <input type="password" name="repeat" class="form-control"
+                placeholder="{{ translations['confirm_new_password_placeholder'][lang] }}">
+            <button type="submit" class="btn btn-user">{{ translations["reset_password_button"][lang] }}</button>
+        </form>
+        <div class="text-center">
+            <a href="{{ url_for('auth.login') }}">{{ translations["login"][lang] }}</a> |
+            <a href="{{ url_for('view.index') }}">{{ translations["back_home"][lang] }}</a>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/reset_password.js') }}?v=2"></script>
+{% endblock %}
+
+{% set translations = {
+"reset_password_title": {"th": "ตั้งรหัสผ่านใหม่", "en": "Reset Password"},
+"new_password_placeholder": {"th": "กรุณากรอกรหัสผ่านใหม่ของคุณ", "en": "Please enter your new password"},
+"confirm_new_password_placeholder": {"th": "ยืนยันรหัสผ่านใหม่", "en": "Confirm new password"},
+"reset_password_button": {"th": "ส่ง", "en": "Send"},
+"login": {"th": "เข้าสู่ระบบ", "en": "Login"},
+"back_home": {"th": "กลับหน้าหลัก", "en": "Back to Home"}
+} %}

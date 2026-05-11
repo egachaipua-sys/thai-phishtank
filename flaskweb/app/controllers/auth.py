@@ -13,7 +13,9 @@ from app.models.user import User
 from app.models.phish_model import PhishModel
 from app.create_app import mongo, mail
 from app.config import Config
+from app.decorators import admin_required, login_required
 from flask_mail import Message
+import re
 import secrets
 from itsdangerous import URLSafeTimedSerializer
 from collections import defaultdict
@@ -663,25 +665,27 @@ def adminmanage():
 
 
 @auth_blueprint.route("/get_users_data", methods=["POST"])
+@admin_required
 def get_users_data():
     """Get users data for admin DataTables (server-side processing)"""
     try:
-        if "user_id" not in session or session.get("user_role") != "admin":
-            return jsonify({"error": "Unauthorized"}), 403
-
         draw = request.form.get("draw", type=int, default=1)
         start = request.form.get("start", type=int, default=0)
         length = request.form.get("length", type=int, default=20)
-        search_value = request.form.get("search[value]", type=str, default="")
+        # Bound length to keep search input from doubling as a CPU-amplifier.
+        search_value = (request.form.get("search[value]", type=str, default="") or "")[:100]
 
         query = {}
         if search_value:
+            # re.escape() — user input is interpolated into a Mongo $regex,
+            # so unescaped metacharacters become a ReDoS / NoSQL-injection vector.
+            escaped = re.escape(search_value)
             query = {
                 "$or": [
-                    {"firstname": {"$regex": search_value, "$options": "i"}},
-                    {"lastname": {"$regex": search_value, "$options": "i"}},
-                    {"email": {"$regex": search_value, "$options": "i"}},
-                    {"organization": {"$regex": search_value, "$options": "i"}}
+                    {"firstname": {"$regex": escaped, "$options": "i"}},
+                    {"lastname": {"$regex": escaped, "$options": "i"}},
+                    {"email": {"$regex": escaped, "$options": "i"}},
+                    {"organization": {"$regex": escaped, "$options": "i"}}
                 ]
             }
 
@@ -753,6 +757,7 @@ def send_reset_email(to_email, token):
     mail.send(msg)
 
 @auth_blueprint.route("/add_member/<user_id>", methods=["POST"])
+@admin_required
 def add_member(user_id):
     try:
         result = User.update_status_to_member(user_id)
@@ -804,6 +809,7 @@ def add_member(user_id):
         )
 
 @auth_blueprint.route("/auth/delete_user/<user_id>", methods=["POST"])
+@admin_required
 def delete_user(user_id):
     try:
         result = User.delete_user_by_id(user_id)

@@ -1,6 +1,13 @@
 [app]
 SECRET_KEY = your_secret_key_here
 DEBUG = True
+# Comma-separated API keys for service / admin accounts that should NOT
+# appear in the user-management table. Leave blank if you don't need it.
+HIDDEN_API_KEYS =
+# Cookie hardening. SESSION_COOKIE_SECURE should be True in production
+# (requires HTTPS); leave False for local HTTP development.
+SESSION_COOKIE_SAMESITE = Lax
+SESSION_COOKIE_SECURE = False
 
 [database]
 MONGO_URI = mongodb://localhost:27017/

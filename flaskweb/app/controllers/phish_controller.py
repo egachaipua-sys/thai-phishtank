@@ -2,6 +2,7 @@ from flask import Blueprint, json, jsonify, request, session, render_template, s
 from app.models.phish_model import PhishModel
 from app.create_app import mongo
 from app.config import Config
+from app.decorators import admin_required, login_required
 import requests
 import re
 import io
@@ -164,16 +165,19 @@ def get_phishing_data():
         draw = request.form.get("draw", type=int, default=1)
         start = request.form.get("start", type=int, default=0)
         length = request.form.get("length", type=int, default=10)
-        search_value = request.form.get("search[value]", type=str, default="")
+        # Bound the search value so a long pathological pattern can't pin CPU.
+        search_value = (request.form.get("search[value]", type=str, default="") or "")[:100]
 
         # จัดการ Search filter
         query = {}
         if search_value:
-            # ค้นหาจาก phish_id หรือ url
+            # re.escape() — without it, user input is interpreted as a regex
+            # and becomes a NoSQL-injection / ReDoS vector.
+            escaped = re.escape(search_value)
             query = {
                 "$or": [
-                    {"phish_id": {"$regex": search_value, "$options": "i"}},
-                    {"url": {"$regex": search_value, "$options": "i"}}
+                    {"phish_id": {"$regex": escaped, "$options": "i"}},
+                    {"url": {"$regex": escaped, "$options": "i"}}
                 ]
             }
 
@@ -207,16 +211,17 @@ def get_check_reports_data():
         draw = request.form.get("draw", type=int, default=1)
         start = request.form.get("start", type=int, default=0)
         length = request.form.get("length", type=int, default=20)
-        search_value = request.form.get("search[value]", type=str, default="")
+        search_value = (request.form.get("search[value]", type=str, default="") or "")[:100]
 
         # Build search query
         query = {}
-        
+
         # 1. Filter by Search Box
         if search_value:
+            escaped = re.escape(search_value)
             query["$or"] = [
-                {"url": {"$regex": search_value, "$options": "i"}},
-                {"reporter": {"$regex": search_value, "$options": "i"}}
+                {"url": {"$regex": escaped, "$options": "i"}},
+                {"reporter": {"$regex": escaped, "$options": "i"}}
             ]
             
         # 2. Filter by Verified Status
@@ -257,14 +262,17 @@ def get_user_reports_data():
         draw = request.form.get("draw", type=int, default=1)
         start = request.form.get("start", type=int, default=0)
         length = request.form.get("length", type=int, default=20)
-        search_value = request.form.get("search[value]", type=str, default="")
+        search_value = (request.form.get("search[value]", type=str, default="") or "")[:100]
 
         query = {}
         if search_value:
+            # re.escape() — without it user input becomes a Mongo regex,
+            # opening NoSQL-injection / ReDoS vectors.
+            escaped = re.escape(search_value)
             query = {
                 "$or": [
-                    {"url": {"$regex": search_value, "$options": "i"}},
-                    {"reporter": {"$regex": search_value, "$options": "i"}}
+                    {"url": {"$regex": escaped, "$options": "i"}},
+                    {"reporter": {"$regex": escaped, "$options": "i"}}
                 ]
             }
 
@@ -293,14 +301,17 @@ def get_white_check_reports_data():
         draw = request.form.get("draw", type=int, default=1)
         start = request.form.get("start", type=int, default=0)
         length = request.form.get("length", type=int, default=20)
-        search_value = request.form.get("search[value]", type=str, default="")
+        search_value = (request.form.get("search[value]", type=str, default="") or "")[:100]
 
         query = {}
         if search_value:
+            # re.escape() — without it user input becomes a Mongo regex,
+            # opening NoSQL-injection / ReDoS vectors.
+            escaped = re.escape(search_value)
             query = {
                 "$or": [
-                    {"url": {"$regex": search_value, "$options": "i"}},
-                    {"reporter": {"$regex": search_value, "$options": "i"}}
+                    {"url": {"$regex": escaped, "$options": "i"}},
+                    {"reporter": {"$regex": escaped, "$options": "i"}}
                 ]
             }
 
@@ -347,14 +358,17 @@ def get_user_white_reports_data():
         draw = request.form.get("draw", type=int, default=1)
         start = request.form.get("start", type=int, default=0)
         length = request.form.get("length", type=int, default=20)
-        search_value = request.form.get("search[value]", type=str, default="")
+        search_value = (request.form.get("search[value]", type=str, default="") or "")[:100]
 
         query = {}
         if search_value:
+            # re.escape() — without it user input becomes a Mongo regex,
+            # opening NoSQL-injection / ReDoS vectors.
+            escaped = re.escape(search_value)
             query = {
                 "$or": [
-                    {"url": {"$regex": search_value, "$options": "i"}},
-                    {"reporter": {"$regex": search_value, "$options": "i"}}
+                    {"url": {"$regex": escaped, "$options": "i"}},
+                    {"reporter": {"$regex": escaped, "$options": "i"}}
                 ]
             }
 
@@ -755,6 +769,7 @@ def report_phishing():
 
 
 @controller_blueprint.route("/verify_report", methods=["POST"])
+@admin_required
 def verify_report():
     try:
         data = request.get_json()
@@ -874,6 +889,7 @@ def verify_report():
 
 
 @controller_blueprint.route("/delete_report/<report_id>", methods=["POST"])
+@admin_required
 def delete_report(report_id):
     try:
         result = PhishModel.delete_report(report_id)
@@ -960,6 +976,7 @@ def whiteverify_report():
 
 
 @controller_blueprint.route("/whitedelete_report/<report_id>", methods=["POST"])
+@admin_required
 def whitedelete_report(report_id):
     try:
         from bson import ObjectId

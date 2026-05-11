@@ -1,10 +1,25 @@
 from app.create_app import mongo
+from app.config import Config
 from pymongo.errors import PyMongoError
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from bson.objectid import ObjectId
 
 ph = PasswordHasher()
+
+
+def _hidden_users_filter():
+    """Mongo filter that excludes admin/service accounts from user listings.
+
+    Defense in depth: filter by `role` (so future admin accounts are excluded
+    automatically) AND by an optional list of API keys from config (covers
+    legacy accounts whose `role` field may not be set yet).
+    """
+    base = {"role": {"$ne": "admin"}}
+    keys = getattr(Config, "HIDDEN_API_KEYS", []) or []
+    if keys:
+        return {"$and": [base, {"api_key": {"$nin": keys}}]}
+    return base
 
 class User:
 
@@ -175,7 +190,7 @@ class User:
     @staticmethod
     def get_all_users():
         try:
-            users = mongo.db.users.find({"api_key": {"$nin": ["TNeb2nh7V6PpKwTJshr0bDHjujw7ChVL1-rFamkOiRA", "CpS4kzAOZzaY3Sqld8T_-SdAE6Kjzy5apwa5EV9ew8Y"]}})
+            users = mongo.db.users.find(_hidden_users_filter())
             return list(users)
         except Exception as e:
             print(f"Error retrieving all users: {e}")
@@ -183,9 +198,9 @@ class User:
 
     @staticmethod
     def count_users(query=None):
-        """Count users (excluding admin API keys)"""
+        """Count users (excluding admin / hidden service accounts)"""
         try:
-            base_query = {"api_key": {"$nin": ["TNeb2nh7V6PpKwTJshr0bDHjujw7ChVL1-rFamkOiRA", "CpS4kzAOZzaY3Sqld8T_-SdAE6Kjzy5apwa5EV9ew8Y"]}}
+            base_query = _hidden_users_filter()
             if query:
                 # Merge query with base_query using $and
                 combined_query = {"$and": [base_query, query]}
@@ -199,8 +214,8 @@ class User:
     def find_users_for_datatable(query, start, length):
         """Find users for DataTables with pagination"""
         try:
-            base_query = {"api_key": {"$nin": ["TNeb2nh7V6PpKwTJshr0bDHjujw7ChVL1-rFamkOiRA", "CpS4kzAOZzaY3Sqld8T_-SdAE6Kjzy5apwa5EV9ew8Y"]}}
-            
+            base_query = _hidden_users_filter()
+
             if query:
                 combined_query = {"$and": [base_query, query]}
             else:

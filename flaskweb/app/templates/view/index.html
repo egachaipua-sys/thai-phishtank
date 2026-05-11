@@ -25,8 +25,9 @@
 "total_reports": {"th": "เว็บไซต์ฟิชชิงทั้งหมด", "en": "Total Phishing Websites"},
 "24_hour_activity": {"th": "กิจกรรมฟิชชิง", "en": "Phishing Activity"},
 "enter_url_check": {"th": "ตรวจสอบเว็บไซต์ฟิชชิง", "en": "Phishing Website Detection"},
-"enter_url_placeholder": {"th": "กรอก url ที่ต้องการตรวจสอบ", "en": "Please enter the URL you want to check."},
-"check_security": {"th": "ตรวจสอบ", "en": "Check"},
+"enter_url_subtitle": {"th": "วาง URL ที่ต้องสงสัยเพื่อให้ระบบและ Google Safe Browsing ช่วยตรวจสอบ", "en": "Paste any suspicious URL and let our ML model and Google Safe Browsing check it."},
+"enter_url_placeholder": {"th": "เช่น https://example.com", "en": "e.g. https://example.com"},
+"check_security": {"th": "ตรวจสอบ", "en": "Check URL"},
 "reported_sites": {"th": "รายงานเว็บไซต์ฟิชชิง", "en": "Reported Phishing Websites"},
 "status": {"th": "สถานะ", "en": "Status"},
 "verify": {"th": "การยืนยัน", "en": "Verify"},
@@ -40,82 +41,87 @@ administrators"},
 } %}
 
 
-<div class="text-center mb-4">
-    <h6 class="text-muted fs-4">{{ translations["7_day_trends"][lang] }}</h6>
-    <div class="row justify-content-center text-center g-4">
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h3 class="text-danger mb-2 fs-2">{{active}}</h3>
-                    <div class="text-muted fs-5">{{ translations["active_phishing_sites"][lang] }}</div>
-                </div>
-            </div>
+<section class="card detection-card mb-3">
+    <h6 class="section-title">
+        <i class="fas fa-shield-halved icon" aria-hidden="true"></i>
+        <span>
+            {{ translations["enter_url_check"][lang] }}
+            <span class="section-title__sub">{{ translations["enter_url_subtitle"][lang] }}</span>
+        </span>
+    </h6>
+    <form id="urlForm" method="post" class="detection-form">
+        <div class="detection-form__input-wrap">
+            <i class="fas fa-link detection-form__input-icon" aria-hidden="true"></i>
+            <input type="text" class="form-control" name="url" id="url"
+                placeholder="{{ translations['enter_url_placeholder'][lang] }}" required>
         </div>
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h3 class="text-danger mb-2 fs-2">{{today}}</h3>
-                    <div class="text-muted fs-5">{{ translations["phishing_today"][lang] }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h3 class="text-danger mb-2 fs-2">{{total}}</h3>
-                    <div class="text-muted fs-5">{{ translations["total_reports"][lang] }}</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+        <button type="submit" class="detection-form__btn">
+            <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+            <span>{{ translations["check_security"][lang] }}</span>
+        </button>
+    </form>
+</section>
 
-<div class="card mb-4">
-    <div>
-        <h6 class="mb-2">{{ translations["24_hour_activity"][lang] }}</h6>
+<section class="mb-3">
+    <h6 class="section-title">
+        <i class="fas fa-chart-line icon" aria-hidden="true"></i>
+        <span>{{ translations["7_day_trends"][lang] }}</span>
+    </h6>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="stat-card h-100">
+                <h3 class="stat-card__value">{{active}}</h3>
+                <div class="stat-card__label">{{ translations["active_phishing_sites"][lang] }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card h-100">
+                <h3 class="stat-card__value">{{today}}</h3>
+                <div class="stat-card__label">{{ translations["phishing_today"][lang] }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card h-100">
+                <h3 class="stat-card__value">{{total}}</h3>
+                <div class="stat-card__label">{{ translations["total_reports"][lang] }}</div>
+            </div>
+        </div>
     </div>
+</section>
+
+<section class="card mb-3">
+    <h6 class="section-title">
+        <i class="fas fa-globe icon" aria-hidden="true"></i>
+        <span>{{ translations["24_hour_activity"][lang] }}</span>
+    </h6>
     <div class="datamaps-popup">
         <div id="world-map"></div>
         <input type="hidden" id="bubbles-data" value='{{ bubbles_data | tojson | safe }}'>
     </div>
-</div>
+</section>
 
-<div class="card mb-4">
-    <div>
-        <h6 class="mb-2">{{ translations["enter_url_check"][lang] }}</h6>
+<section class="card mb-3">
+    <h6 class="section-title">
+        <i class="fas fa-list-ul icon" aria-hidden="true"></i>
+        <span>{{ translations["reported_sites"][lang] }}</span>
+    </h6>
+    <div class="table-responsive">
+        <table id="phishingReportsTable" class="table">
+            <thead>
+                <tr>
+                    <th class="text-center" style="width: 10%;">ID</th>
+                    <th class="text-center" style="width: 15%;">URL</th>
+                    <th class="text-center" style="width: 10%;">{{ translations["status"][lang] }}</th>
+                    <th class="text-center" style="width: 10%;" title="{{ translations['title_row'][lang] }}">
+                        {{ translations['verify'][lang] }}&nbsp;<i class="fa fa-info-circle" aria-hidden="true"></i>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
     </div>
-    <div>
-        <form id="urlForm" method="post" class="input-group">
-            <input type="text" class="form-control" name="url" id="url"
-                placeholder="{{ translations['enter_url_placeholder'][lang] }}" required>
-            <button type="submit" class="btn btn-outline-primary">{{ translations["check_security"][lang] }}</button>
-        </form>
-    </div>
-</div>
-
-<div class="card mb-4">
-    <div>
-        <h6 class="mb-0">{{ translations["reported_sites"][lang] }}</h6>
-    </div>
-    <div>
-        <div class="table-responsive">
-            <table id="phishingReportsTable" class="table">
-                <thead>
-                    <tr>
-                        <th class="text-center" style="width: 10%;">ID</th>
-                        <th class="text-center" style="width: 15%;">URL</th>
-                        <th class="text-center" style="width: 10%;">{{ translations["status"][lang] }}</th>
-                        <th class="text-center" style="width: 10%;" title="{{ translations['title_row'][lang] }}">
-                            {{ translations['verify'][lang] }}&nbsp;<i class="fa fa-info-circle" aria-hidden="true"></i>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+</section>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const lang = "{{ lang }}";
@@ -242,7 +248,7 @@ administrators"},
                 "domain_not_exist": { "th": "โดเมนไม่มีอยู่จริง", "en": "Domain Does Not Exist" },
                 "ok_btn": { "th": "ตกลง", "en": "OK" },
                 "our_system_label": { "th": "ระบบของเรา", "en": "Our System" },
-                "safe_browsing_label": { "th": "Google Safe Browsing", "en": "Safe Browsing" },
+                "safe_browsing_label": { "th": "Google Safe Browsing", "en": "Google Safe Browsing" },
                 "unknown": { "th": "ไม่ทราบ", "en": "Unknown" }
             };
 
@@ -295,10 +301,11 @@ administrators"},
                         console.log("URL:", data.url);
 
                         if (data.prediction === "phishing") {
-                            icon = 'warning';
+                            icon = 'error';
+                            title = lang === 'th' ? 'พบเว็บไซต์ฟิชชิง!' : 'Phishing Detected!';
                             message = `
                                 <div style="text-align: center;">
-                                    <span style="color: #e67e22; font-weight: bold; font-size: 18px;">${translations["phishing"][lang]}</span>
+                                    <span style="color: #dc2626; font-weight: bold; font-size: 18px;">${translations["phishing"][lang]}</span>
                                     <p style="color: #333; margin-top: 10px; line-height: 1.6;">${data.message}</p>
                                 </div>`;
                         } else if (data.prediction === "offline") {

@@ -88,18 +88,99 @@ def is_hosting_platform(domain: str) -> bool:
     return False
 
 
+from urllib.parse import urlparse, urlunparse
+
+
+def _generate_safe_browsing_variants(url: str) -> list:
+    """
+    Build a deduplicated list of canonical URL variants to send to the
+    Google Safe Browsing Lookup API.
+
+    The Lookup API expands host+path on its end, but it does NOT switch the
+    scheme, toggle the `www.` prefix, or try the bare host root — and Google
+    often keys threats against a different surface than the exact URL the user
+    typed (e.g. the host root or the http:// variant). Sending a handful of
+    canonical variants in one batched call dramatically improves recall
+    without extra latency or quota cost.
+    """
+    raw = (url or "").strip()
+    if not raw:
+        return []
+
+    # Ensure a scheme so urlparse can split it cleanly.
+    if not raw.lower().startswith(("http://", "https://")):
+        raw = "http://" + raw
+
+    try:
+        parsed = urlparse(raw)
+    except Exception:
+        return [raw]
+
+    host = (parsed.hostname or "").lower()
+    if not host:
+        return [raw]
+
+    port = f":{parsed.port}" if parsed.port else ""
+    netloc = host + port
+    path = parsed.path or "/"
+    query = parsed.query
+
+    # Build host alternatives: with and without leading "www."
+    if host.startswith("www."):
+        host_variants = {host, host[4:]}
+    else:
+        host_variants = {host, "www." + host}
+
+    # Build path alternatives: original, trimmed trailing slash, and host root.
+    path_variants = {path, "/"}
+    if path != "/" and path.endswith("/"):
+        path_variants.add(path.rstrip("/") or "/")
+    elif path != "/":
+        path_variants.add(path + "/")
+
+    variants = []
+    seen = set()
+    for scheme in ("https", "http"):
+        for h in host_variants:
+            nl = h + port if not port else h + port
+            for p in path_variants:
+                # Only attach the query to the original path; for host-root
+                # and trimmed variants we want the bare URL.
+                q = query if p == path else ""
+                candidate = urlunparse((scheme, nl, p, "", q, ""))
+                if candidate not in seen:
+                    seen.add(candidate)
+                    variants.append(candidate)
+
+    return variants
+
+
 def check_safe_browsing(url: str) -> dict:
     """
-    ตรวจสอบ URL ผ่าน Google Safe Browsing API
-    
+    ตรวจสอบ URL ผ่าน Google Safe Browsing Lookup API (v4).
+
+    การเรียก API นี้จะส่ง URL หลายรูปแบบในคำขอเดียว (batched threatEntries)
+    เพื่อเพิ่มโอกาสการตรวจพบ เนื่องจาก Google มักเก็บภัยคุกคามไว้ที่ host
+    หรือ scheme ที่ต่างจาก URL ดิบที่ผู้ใช้พิมพ์มา
+
     Returns:
-        dict: {"is_safe": True/False, "threats": [...], "error": None/str}
+        dict: {"is_safe": True/False/None, "threats": [...], "matched_url": str|None, "error": None/str}
     """
     try:
+        variants = _generate_safe_browsing_variants(url)
+        if not variants:
+            return {"is_safe": True, "threats": [], "matched_url": None, "error": None}
+
+        # The v4 Lookup API accepts up to 500 threatEntries per request; we'll
+        # usually have <16 here, so a single batched call is fine.
+        threat_entries = [{"url": v} for v in variants]
+
+        print(f"[SAFE BROWSING] Checking {len(threat_entries)} URL variants for {url}: {variants}")
+
         payload = {
             "client": {
                 "clientId": "phishtank_th",
-                "clientVersion": "1.0.0"
+                "clientVersion": "1.1.0"
             },
             "threatInfo": {
                 "threatTypes": [
@@ -110,36 +191,49 @@ def check_safe_browsing(url: str) -> dict:
                 ],
                 "platformTypes": ["ANY_PLATFORM"],
                 "threatEntryTypes": ["URL"],
-                "threatEntries": [{"url": url}]
+                "threatEntries": threat_entries,
             }
         }
-        
+
         response = requests.post(
             f"{GOOGLE_SAFE_BROWSING_URL}?key={GOOGLE_SAFE_BROWSING_API_KEY}",
             headers={"Content-Type": "application/json"},
             json=payload,
             timeout=10
         )
-        
+
         if response.status_code == 200:
             result = response.json()
-            # ถ้ามี matches หมายความว่าเจอ threats
-            if "matches" in result and len(result["matches"]) > 0:
-                threats = [match.get("threatType") for match in result["matches"]]
-                return {"is_safe": False, "threats": threats, "error": None}
-            else:
-                # ไม่พบ threats = safe
-                return {"is_safe": True, "threats": [], "error": None}
-        else:
-            print(f"[SAFE BROWSING ERROR] Status {response.status_code}: {response.text}")
-            return {"is_safe": None, "threats": [], "error": f"API Error: {response.status_code}"}
-            
+            matches = result.get("matches") or []
+            if matches:
+                threats = []
+                matched_urls = []
+                for m in matches:
+                    t = m.get("threatType")
+                    if t and t not in threats:
+                        threats.append(t)
+                    matched_url = (m.get("threat") or {}).get("url")
+                    if matched_url and matched_url not in matched_urls:
+                        matched_urls.append(matched_url)
+                print(f"[SAFE BROWSING] PHISHING/MALWARE detected. Threats={threats} MatchedURLs={matched_urls}")
+                return {
+                    "is_safe": False,
+                    "threats": threats,
+                    "matched_url": matched_urls[0] if matched_urls else None,
+                    "error": None,
+                }
+            print(f"[SAFE BROWSING] No matches for any variant of {url}")
+            return {"is_safe": True, "threats": [], "matched_url": None, "error": None}
+
+        print(f"[SAFE BROWSING ERROR] Status {response.status_code}: {response.text}")
+        return {"is_safe": None, "threats": [], "matched_url": None, "error": f"API Error: {response.status_code}"}
+
     except requests.Timeout:
         print(f"[SAFE BROWSING TIMEOUT] Request timed out for {url}")
-        return {"is_safe": None, "threats": [], "error": "Request timed out"}
+        return {"is_safe": None, "threats": [], "matched_url": None, "error": "Request timed out"}
     except Exception as e:
         print(f"[SAFE BROWSING EXCEPTION] {e}")
-        return {"is_safe": None, "threats": [], "error": str(e)}
+        return {"is_safe": None, "threats": [], "matched_url": None, "error": str(e)}
 
 
 config = configparser.ConfigParser()
@@ -989,7 +1083,7 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                 print(f"[ERROR] Auto-blacklist failed: {e}")
 
             # 3. Create Message
-            msg = f"Google Safe Browsing has flagged {url} as a phishing site.\nSafe Browsing: Phishing"
+            msg = f"Google Safe Browsing has flagged {url} as a phishing site.\nGoogle Safe Browsing: Phishing"
             if whois_details:
                 details_text = []
                 if whois_details.get("registrar"): details_text.append(f"Registrar: {whois_details['registrar']}")
@@ -1264,11 +1358,11 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
 
             # สร้างข้อความตามกรณี
             if our_system_result == "Phishing" and safe_browsing_result == "Safe":
-                split_message = f"Our system has flagged {url} as a phishing site, though Google Safe Browsing does not currently report it.\nOur System: Phishing\nSafe Browsing: Safe" + details_message
+                split_message = f"Our system has flagged {url} as a phishing site, though Google Safe Browsing does not currently report it.\nOur System: Phishing\nGoogle Safe Browsing: Safe" + details_message
             elif our_system_result == "Safe" and safe_browsing_result == "Phishing":
-                split_message = f"Google Safe Browsing has flagged {url} as a phishing site, though our system does not currently report it.\nOur System: Safe\nSafe Browsing: Phishing" + details_message
+                split_message = f"Google Safe Browsing has flagged {url} as a phishing site, though our system does not currently report it.\nOur System: Safe\nGoogle Safe Browsing: Phishing" + details_message
             else:
-                split_message = f"Our System: {our_system_result}\nSafe Browsing: {safe_browsing_result}"
+                split_message = f"Our System: {our_system_result}\nGoogle Safe Browsing: {safe_browsing_result}"
                 if our_system_result != "Unknown" and safe_browsing_result != "Unknown":
                      split_message += details_message
             

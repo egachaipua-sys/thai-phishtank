@@ -95,5 +95,92 @@
 }
 
 code {
-    font-family: "Mitr", serif;
+    font-family: "Courier New", Courier, monospace;
+    background-color: #f1f5f9;
+    color: #0f172a;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.cardinfo h4 {
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+    color: #0f172a;
+}
+
+.cardinfo ul {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+    color: #555;
+    line-height: 1.6;
+}
+
+.cardinfo ul li {
+    margin-bottom: 0.25rem;
+}
+
+.api-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5rem 0 1.25rem;
+    font-size: 0.95rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.api-table thead {
+    background: #f9fafb;
+}
+
+.api-table thead th {
+    text-align: left;
+    padding: 10px 12px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #6b7280;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.api-table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+    color: #0f172a;
+}
+
+.api-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.api-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 999px;
+}
+
+.badge-safe {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge-phishing {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-na {
+    background: #e5e7eb;
+    color: #475569;
 }

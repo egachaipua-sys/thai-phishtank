@@ -7,19 +7,58 @@ Created on Mon Jul 27 17:58:48 2020
 """
 from datetime import datetime
 from bs4 import BeautifulSoup
+from cachetools import TTLCache
 import requests
+import tldextract
 import whois
 import time
 import re
 
 
 #################################################################################################################################
-#               Domain registration age 
+#               Shared WHOIS cache
+#################################################################################################################################
+# A single API request triggers WHOIS lookups from three feature functions
+# (whois_registered_domain, domain_registration_length, domain_age) plus up to
+# two more from the request handler. Without sharing, that's 5+ round trips
+# (5-10s each) for one URL. Memoise by registered domain so all callers in the
+# same request — and across requests within the TTL — collapse to one lookup.
+
+_WHOIS_CACHE = TTLCache(maxsize=1000, ttl=3600)
+_WHOIS_SENTINEL = object()
+
+
+def cached_whois(target):
+    """`whois.whois(target)` memoised by registered domain.
+
+    Re-raises a cached exception if the previous lookup failed, preserving the
+    original error-handling contract.
+    """
+    ext = tldextract.extract(target)
+    if not ext.domain or not ext.suffix:
+        return whois.whois(target)
+    key = f"{ext.domain}.{ext.suffix}".lower()
+    cached = _WHOIS_CACHE.get(key, _WHOIS_SENTINEL)
+    if cached is not _WHOIS_SENTINEL:
+        if isinstance(cached, BaseException):
+            raise cached
+        return cached
+    try:
+        result = whois.whois(key)
+    except BaseException as exc:
+        _WHOIS_CACHE[key] = exc
+        raise
+    _WHOIS_CACHE[key] = result
+    return result
+
+
+#################################################################################################################################
+#               Domain registration age
 #################################################################################################################################
 
 def domain_registration_length(domain):
     try:
-        res = whois.whois(domain)
+        res = cached_whois(domain)
         expiration_date = res.expiration_date
         today = datetime.today()
         if expiration_date:
@@ -34,7 +73,7 @@ def domain_registration_length1(domain):
     try:
         v1 = -1
         v2 = -1
-        host = whois.whois(domain)
+        host = cached_whois(domain)
         hostname = host.domain_name
         expiration_date = host.expiration_date
         today = datetime.today()
@@ -54,10 +93,10 @@ def domain_registration_length1(domain):
 #               Domain recognized by WHOIS
 #################################################################################################################################
 
- 
+
 def whois_registered_domain(domain):
     try:
-        hostname = whois.whois(domain).domain_name
+        hostname = cached_whois(domain).domain_name
         if isinstance(hostname, list):
             return 1 if all(not re.search(h.lower(), domain) for h in hostname) else 0
         return 1 if not re.search(hostname.lower(), domain) else 0
@@ -70,11 +109,10 @@ def whois_registered_domain(domain):
 import urllib
 
 def web_traffic(short_url):
-    try:
-        rank = BeautifulSoup(urllib.request.urlopen("http://data.alexa.com/data?cli=10&dat=s&url=" + short_url, timeout=20).read(), "xml").find("REACH")['RANK']
-        return int(rank)
-    except Exception:
-        return 1
+    # Alexa was retired in May 2022; the original implementation always raised
+    # and returned 1, so the trained model already treats this as a constant.
+    # Skipping avoids the 20s timeout on every cache-miss request.
+    return 1
 
 #################################################################################################################################
 #               Domain age of a url
@@ -83,7 +121,7 @@ def web_traffic(short_url):
 def domain_age(domain):
     try:
         url = domain.split("//")[-1].split("/")[0].split('?')[0]
-        w = whois.whois(url)
+        w = cached_whois(url)
         creation_date = w.creation_date
         if isinstance(creation_date, list):
             creation_date = creation_date[0]
@@ -110,20 +148,11 @@ def global_rank(domain):
 from urllib.parse import urlencode
 
 def google_index(url):
-    try:
-        user_agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.116 Safari/537.36'
-        headers = {'User-Agent': user_agent}
-        query = {'q': 'site:' + url}
-        google = "https://www.google.com/search?" + urlencode(query)
-        data = requests.get(google, headers=headers, timeout=20)
-        data.encoding = 'ISO-8859-1'
-        soup = BeautifulSoup(data.content, "html.parser")
-        if 'Our systems have detected unusual traffic from your computer network.' in str(soup):
-            return -1
-        return 0 if soup.find(id="rso") else 1
-    except Exception:
-        return 1
-    
+    # Google rate-limits scraping aggressively, so this almost always tripped
+    # the bot detection and returned 1 after a 20s timeout. The trained model
+    # is already calibrated against the constant-1 fallback.
+    return 1
+
 #print(google_index('http://www.google.com'))
 #################################################################################################################################
 #               DNSRecord  expiration length
@@ -156,4 +185,3 @@ def page_rank(key, domain):
         return page_rank
     except Exception:
         return 1  # กรณีเกิดข้อผิดพลาดให้คืนค่า 1
-

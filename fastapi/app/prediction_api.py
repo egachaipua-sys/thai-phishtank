@@ -11,19 +11,22 @@ import hashlib
 current_dir = os.path.dirname(os.path.abspath(__file__))
 mlengine_path = os.path.join(current_dir, "mlengine")
 sys.path.append(mlengine_path)
-from app.mlengine.prediction import prediction
+from app.mlengine.prediction import prediction, _load_model
 # เพิ่ม import นี้เข้าไป
 from app.mlengine.scripts.feature_extractor import is_URL_accessible
+from app.mlengine.scripts.external_features import cached_whois
 # from mlengine.prediction import prediction
 import configparser
 import requests
-import whois
 from datetime import datetime
 import pytz
 import tldextract
 import random
 import string
 import json
+
+# Single tz instance — pytz.timezone() walks the zoneinfo db each call.
+THAI_TIMEZONE = pytz.timezone("Asia/Bangkok")
 
 
 # ========================================
@@ -71,7 +74,7 @@ def load_hosting_platforms():
         print(f"[ERROR] Failed to load hosting platforms: {e}")
         return []
 
-HOSTING_PLATFORMS = load_hosting_platforms()
+HOSTING_PLATFORMS = frozenset(load_hosting_platforms())
 print(f"[INFO] Loaded {len(HOSTING_PLATFORMS)} hosting platforms from JSON.")
 
 def is_hosting_platform(domain: str) -> bool:
@@ -81,10 +84,16 @@ def is_hosting_platform(domain: str) -> bool:
     """
     if not domain:
         return False
-    domain_lower = domain.lower()
-    for platform in HOSTING_PLATFORMS:
-        if domain_lower == platform or domain_lower.endswith("." + platform):
+    # Walk the parent zones (e.g. "a.b.example.com" → "b.example.com" → ...)
+    # so we get O(label-count) lookups instead of O(platform-count).
+    d = domain.lower()
+    while d:
+        if d in HOSTING_PLATFORMS:
             return True
+        idx = d.find(".")
+        if idx == -1:
+            break
+        d = d[idx + 1:]
     return False
 
 
@@ -142,7 +151,7 @@ def _generate_safe_browsing_variants(url: str) -> list:
     seen = set()
     for scheme in ("https", "http"):
         for h in host_variants:
-            nl = h + port if not port else h + port
+            nl = h + port
             for p in path_variants:
                 # Only attach the query to the original path; for host-root
                 # and trimmed variants we want the bare URL.
@@ -237,7 +246,12 @@ def check_safe_browsing(url: str) -> dict:
 
 
 config = configparser.ConfigParser()
-config.read("config_app.ini")
+# Resolve relative to the project root so the server picks up the same config
+# regardless of which directory it was started from.
+_config_path = os.path.join(os.path.dirname(current_dir), "config_app.ini")
+if not os.path.exists(_config_path):
+    _config_path = "config_app.ini"
+config.read(_config_path)
 
 MONGO_DETAILS = config["DATABASE"]["MONGO_DETAILS"]
 DATABASE_NAME = config["DATABASE"]["DATABASE_NAME"]
@@ -279,6 +293,17 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 client = MongoClient(MONGO_DETAILS)
 db = client[DATABASE_NAME]
+
+# Path passed to prediction(); kept as a module constant so the startup preload
+# uses the exact same cache key the request handler will look up later.
+ML_MODEL_PATH = "app/mlengine/mlp99.31"
+
+try:
+    _load_model(ML_MODEL_PATH)
+    print(f"[STARTUP] ML model preloaded from {ML_MODEL_PATH}")
+except Exception as _model_preload_err:
+    # Don't fail startup; the first request will retry the load.
+    print(f"[STARTUP] ML model preload failed (will retry on demand): {_model_preload_err}")
 
 # ========================================
 # [OPTIMIZED] Caching system เพื่อเพิ่มประสิทธิภาพ
@@ -545,30 +570,39 @@ def convert_whois_to_dict(whois_data) -> dict:
     return result
 
 
+def _whois_cache_key(url: str) -> str:
+    """Cache key for converted WHOIS dicts.
+
+    Keyed by registered domain so that requests for `https://example.com/foo`
+    and `http://example.com/bar` share the same cached dict — and so the
+    handler's dict cache aligns with the raw-WHOIS cache in external_features.
+    """
+    ext = tldextract.extract(url)
+    if ext.domain and ext.suffix:
+        return f"{ext.domain}.{ext.suffix}".lower()
+    return (url or "").lower()
+
+
 def get_whois_data(url: str):
     """
-    [OPTIMIZED] WHOIS lookup พร้อม caching
-    ลดเวลาจาก ~5-10 วินาที เหลือ ~0ms สำหรับ cached URLs
+    [OPTIMIZED] WHOIS lookup พร้อม caching แบบสองชั้น
+    - ชั้นนอก (whois_cache): cache ของ converted dict — ข้ามการ convert ซ้ำ
+    - ชั้นใน (cached_whois): cache ของ raw whois object — ใช้ร่วมกับ feature_extractor
     """
-    cache_key = get_cache_key(url)
-    
-    # ตรวจสอบ cache ก่อน
+    cache_key = _whois_cache_key(url)
+
     if cache_key in whois_cache:
         print(f"[CACHE HIT] WHOIS data for {url}")
         return whois_cache[cache_key]
-    
-    # ถ้าไม่มีใน cache ให้ทำ lookup
+
     try:
         print(f"[CACHE MISS] Fetching WHOIS for {url}...")
-        whois_data = whois.whois(url)
-        # แปลงเป็น serializable dict
-        whois_dict = convert_whois_to_dict(whois_data)
-        # เก็บใน cache
+        whois_dict = convert_whois_to_dict(cached_whois(url))
         whois_cache[cache_key] = whois_dict
         return whois_dict
     except Exception as e:
         print(f"WHOIS lookup failed for {url}: {e}")
-        # เก็บ empty dict ใน cache เพื่อไม่ต้อง retry ซ้ำ
+        # Cache the failure too so we don't retry on every request branch.
         whois_cache[cache_key] = {}
         return {}
 
@@ -716,8 +750,7 @@ async def check_verifited_url(url: str, api_key: str = Depends(verify_admin)):
     """
     try:
         # แปลงเวลาปัจจุบันเป็นโซนเวลาไทย
-        thai_timezone = pytz.timezone("Asia/Bangkok")
-        verification_time = datetime.now(tz=thai_timezone).isoformat()
+        verification_time = datetime.now(tz=THAI_TIMEZONE).isoformat()
         submission_time = verification_time
 
         # แปลง URL เป็น lowercase สำหรับ case-insensitive matching
@@ -753,9 +786,9 @@ async def check_verifited_url(url: str, api_key: str = Depends(verify_admin)):
         # ========================================
         # ค้นหาใน BLACK_LIST
         # ========================================
-        blacklisted_url = db[BLACK_LIST].find_one({"url_lower": url_lower})
-        if not blacklisted_url:
-            blacklisted_url = db[BLACK_LIST].find_one({"url": url})
+        blacklisted_url = db[BLACK_LIST].find_one(
+            {"$or": [{"url_lower": url_lower}, {"url": url}]}
+        )
 
         if blacklisted_url:
             # ========================================
@@ -840,8 +873,7 @@ async def check_verifited_url(url: str, api_key: str = Depends(verify_admin)):
 @app.post("/api/phishing-url")
 async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
     # Convert current time to Thai timezone
-    thai_timezone = pytz.timezone("Asia/Bangkok")
-    submission_time = datetime.now(tz=thai_timezone).isoformat()
+    submission_time = datetime.now(tz=THAI_TIMEZONE).isoformat()
 
     # Extract domain name from the URL (ignore protocol and subdomain)
     extracted = tldextract.extract(url)
@@ -880,20 +912,20 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
         # [NEW] เช็ค WHITE_LIST - ถ้าอยู่ใน whitelist ให้ return safe ทันที
         # เช็คทั้ง URL และ domain_name
         # ========================================
-        whitelisted_url = db[WHITE_LIST].find_one({"url_lower": url_lower})
-        
-        # Fallback: ถ้าไม่เจอจาก url_lower ให้ลอง exact match
+        # Combined index lookup — Mongo can use the per-field indexes for each
+        # $or arm, so this is one network round-trip instead of three.
+        whitelisted_url = db[WHITE_LIST].find_one({
+            "$or": [
+                {"url_lower": url_lower},
+                {"url": url},
+                {"domain_name": domain_name},
+            ]
+        })
+
+        # Last-resort regex fallback for legacy docs missing `domain_name`.
+        # Unindexed → collection scan, so only run when nothing else matched.
         if not whitelisted_url:
-            whitelisted_url = db[WHITE_LIST].find_one({"url": url})
-        
-        # เช็ค domain_name ด้วย - ถ้า domain เดียวกันก็ถือว่าอยู่ใน whitelist
-        if not whitelisted_url:
-            whitelisted_url = db[WHITE_LIST].find_one({"domain_name": domain_name})
-        
-        # [NEW] ค้นหาด้วย regex pattern - จับ URLs ที่มี protocol prefix เช่น http://google.com
-        if not whitelisted_url:
-            # สร้าง pattern: .*google\.com.* (escape dots)
-            escaped_domain = domain_name.replace(".", r"\.")
+            escaped_domain = re.escape(domain_name)
             pattern = f"(^|.*://){escaped_domain}(/.*)?$"
             whitelisted_url = db[WHITE_LIST].find_one({
                 "url": {"$regex": pattern, "$options": "i"}
@@ -948,12 +980,10 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
         # ========================================
         # เช็ค BLACK_LIST
         # ========================================
-        # [OPTIMIZED] ค้นหาด้วย url_lower field ก่อน (ใช้ index ได้)
-        blacklisted_url = db[BLACK_LIST].find_one({"url_lower": url_lower})
-        
-        # Fallback: ถ้าไม่เจอจาก url_lower ให้ลอง exact match
-        if not blacklisted_url:
-            blacklisted_url = db[BLACK_LIST].find_one({"url": url})
+        # [OPTIMIZED] รวมเป็น query เดียวด้วย $or — Mongo ใช้ index ได้ทั้งสองฝั่ง
+        blacklisted_url = db[BLACK_LIST].find_one(
+            {"$or": [{"url_lower": url_lower}, {"url": url}]}
+        )
 
         if blacklisted_url:
             # If domain exists in BLACK_LIST, return the details from the database
@@ -1056,7 +1086,7 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                 filter_query = {"$or": [{"url_lower": target_url_lower}, {"url": url}]}
                 
                 random_id = generate_random_id()
-                submission_time = datetime.now(pytz.timezone("Asia/Bangkok")).isoformat()
+                submission_time = datetime.now(THAI_TIMEZONE).isoformat()
                 
                 update_data = {
                     "$set": {
@@ -1180,10 +1210,10 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                 online = check_online_status(url)
                 random_id = generate_random_id()
                 
-                existing_blacklist = db[BLACK_LIST].find_one({"url_lower": url_lower})
-                if not existing_blacklist:
-                    existing_blacklist = db[BLACK_LIST].find_one({"url": url})
-                    
+                existing_blacklist = db[BLACK_LIST].find_one(
+                    {"$or": [{"url_lower": url_lower}, {"url": url}]}
+                )
+
                 if not existing_blacklist:
                     db[BLACK_LIST].insert_one({
                         "url": url,
@@ -1239,10 +1269,10 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
                 online = check_online_status(url)
                 random_id = generate_random_id()
                 
-                existing_blacklist = db[BLACK_LIST].find_one({"url_lower": url_lower})
-                if not existing_blacklist:
-                    existing_blacklist = db[BLACK_LIST].find_one({"url": url})
-                    
+                existing_blacklist = db[BLACK_LIST].find_one(
+                    {"$or": [{"url_lower": url_lower}, {"url": url}]}
+                )
+
                 if not existing_blacklist:
                     result = db[BLACK_LIST].insert_one(
                         {
@@ -1318,10 +1348,10 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
             # [Added] Auto-blacklist if Google Safe Browsing confirms Phishing
             if safe_browsing_result == "Phishing":
                 try:
-                    existing_blacklist = db[BLACK_LIST].find_one({"url_lower": url_lower})
-                    if not existing_blacklist:
-                        existing_blacklist = db[BLACK_LIST].find_one({"url": url})
-                    
+                    existing_blacklist = db[BLACK_LIST].find_one(
+                        {"$or": [{"url_lower": url_lower}, {"url": url}]}
+                    )
+
                     if not existing_blacklist:
                         print(f"[AUTO-BLACKLIST] Google Verified Phishing. Inserting {url}...")
                         random_id = generate_random_id()

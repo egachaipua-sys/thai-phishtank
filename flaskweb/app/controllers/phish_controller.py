@@ -12,6 +12,10 @@ import pytz
 
 controller_blueprint = Blueprint("controller", __name__)
 
+# Cap rows per CSV upload. Combined with Flask's MAX_CONTENT_LENGTH this bounds
+# both bandwidth and downstream Mongo write amplification per request.
+MAX_CSV_ROWS = 10_000
+
 def translate_message(message_key):
     language = session.get('lang', 'en')
 
@@ -403,9 +407,12 @@ def check_url():
              return jsonify({"status": "error", "message": translate_message("invalid_url_fmt"), "prediction": "error"}), 200
 
         fastapi_url = f"{Config.DOMAIN_NAME}/api/phishing-url"
-        params = {"url": url_to_check, "api_key": Config.API_KEY}
+        # API key goes in the Authorization header, not the query string — keys
+        # in query strings leak into nginx/gunicorn/Mongo access logs.
+        params = {"url": url_to_check}
+        headers = {"Authorization": f"Bearer {Config.API_KEY}"}
 
-        with requests.post(fastapi_url, params=params) as response:
+        with requests.post(fastapi_url, params=params, headers=headers) as response:
             response.raise_for_status()
             fastapi_result = response.json()
 
@@ -562,6 +569,13 @@ def report_legitimate():
                     stream = io.TextIOWrapper(csv_file.stream, encoding='utf-8')
                     csv_reader = csv.reader(stream)
                     for row_num, row in enumerate(csv_reader, 1):
+                        # Reject any upload past the row cap rather than
+                        # silently truncating, so callers know to split.
+                        if row_num > MAX_CSV_ROWS:
+                            return jsonify({
+                                "status": "error",
+                                "error": f"CSV exceeds {MAX_CSV_ROWS} rows. Please split the file."
+                            }), 413
                         if row:
                             potential_url = row[0].strip() if row[0].strip() else None
                             if potential_url:
@@ -684,6 +698,13 @@ def report_phishing():
                     # next(csv_reader, None)
 
                     for row_num, row in enumerate(csv_reader, 1): # เริ่มนับแถวจาก 1
+                        # Reject any upload past the row cap rather than
+                        # silently truncating, so callers know to split.
+                        if row_num > MAX_CSV_ROWS:
+                            return jsonify({
+                                "status": "error",
+                                "error": f"CSV exceeds {MAX_CSV_ROWS} rows. Please split the file."
+                            }), 413
                         if row: # ตรวจสอบว่าแถวไม่ว่างเปล่า
                             # เราจะถือว่าคอลัมน์แรก (index 0) คือ URL
                             potential_url = row[0].strip() if row[0].strip() else None
@@ -786,10 +807,11 @@ def verify_report():
             url_to_check = "https://" + url_to_check
 
         fastapi_url = f"{Config.DOMAIN_NAME}/api/verifited-url"
-        params = {"url": url_to_check, "api_key": Config.ADMIN_KEY}
+        params = {"url": url_to_check}
+        headers = {"Authorization": f"Bearer {Config.ADMIN_KEY}"}
 
         try:
-            response = requests.post(fastapi_url, params=params, timeout=30)
+            response = requests.post(fastapi_url, params=params, headers=headers, timeout=30)
             response.raise_for_status()
             
             fastapi_result = response.json()

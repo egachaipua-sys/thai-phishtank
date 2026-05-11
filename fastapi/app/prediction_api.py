@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Header, Query
 from pydantic import BaseModel
 from pymongo import MongoClient
 from cachetools import TTLCache
+import secrets
 import sys
 import os
 import re
@@ -13,7 +14,7 @@ mlengine_path = os.path.join(current_dir, "mlengine")
 sys.path.append(mlengine_path)
 from app.mlengine.prediction import prediction, _load_model
 # เพิ่ม import นี้เข้าไป
-from app.mlengine.scripts.feature_extractor import is_URL_accessible
+from app.mlengine.scripts.feature_extractor import is_URL_accessible, is_safe_target_host
 from app.mlengine.scripts.external_features import cached_whois
 # from mlengine.prediction import prediction
 import configparser
@@ -500,19 +501,44 @@ class PhishDetail(BaseModel):
     prediction: str
 
 
-async def verify_api_key(api_key: str):
-    user = db[USER_COLLECTION].find_one({"api_key": api_key})
+def _extract_api_key(authorization: str | None, api_key_query: str | None) -> str | None:
+    """Prefer `Authorization: Bearer <key>`; fall back to legacy `?api_key=`.
+
+    Query-string keys leak into proxy/server access logs. Headers don't (by
+    default). New callers should use the header; the query fallback is kept so
+    we don't break existing integrations the day this ships.
+    """
+    if authorization:
+        parts = authorization.split(None, 1)
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            candidate = parts[1].strip()
+            if candidate:
+                return candidate
+    return api_key_query or None
+
+
+async def verify_api_key(
+    authorization: str | None = Header(default=None),
+    api_key: str | None = Query(default=None),
+):
+    key = _extract_api_key(authorization, api_key)
+    if not key:
+        raise HTTPException(status_code=401, detail="API key required")
+    user = db[USER_COLLECTION].find_one({"api_key": key})
     if not user:
         raise HTTPException(status_code=403, detail="Invalid API key")
     return user
 
 
-async def verify_admin(api_key: str):
-
-    if api_key != API_KEY:
+async def verify_admin(
+    authorization: str | None = Header(default=None),
+    api_key: str | None = Query(default=None),
+):
+    key = _extract_api_key(authorization, api_key)
+    # compare_digest avoids leaking the admin key's prefix length via timing.
+    if not key or not secrets.compare_digest(key, API_KEY):
         raise HTTPException(status_code=403, detail="Invalid API key")
-    admin = API_KEY
-    return admin
+    return API_KEY
 
 
 def convert_whois_to_dict(whois_data) -> dict:
@@ -650,6 +676,13 @@ def check_domain_exists(url: str) -> bool:
         
         # DNS lookup - ถ้าสำเร็จแสดงว่า domain มีจริง
         socket.gethostbyname(hostname_ascii)
+
+        # SSRF guard — refuse to confirm-or-deny private/loopback hosts so an
+        # attacker can't probe internal infra by submitting internal hostnames.
+        if not is_safe_target_host(hostname_ascii):
+            print(f"[SSRF GUARD] Refusing private/loopback host: {hostname_ascii}")
+            return False
+
         print(f"[DNS LOOKUP] Domain exists: {hostname}")
         return True
         

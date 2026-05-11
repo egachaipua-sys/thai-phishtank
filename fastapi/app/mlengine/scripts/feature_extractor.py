@@ -5,7 +5,9 @@ import scripts.external_features as trdfe
 import tldextract
 import requests
 import re
-from urllib.parse import urlparse
+import ipaddress
+import socket
+from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 import concurrent.futures
 import urllib3
@@ -16,6 +18,49 @@ key = "ck0c0s80wkgo8gwscc0ookskccs0c4k0c4gs0c0c "
 
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
+# ---------------------------------------------------------------------------
+# SSRF guard
+# ---------------------------------------------------------------------------
+# The phishing-check endpoint accepts arbitrary user-supplied URLs and fetches
+# them server-side. Without this check, an authenticated caller could point us
+# at internal services (127.0.0.1, RFC1918 ranges, the AWS metadata endpoint
+# at 169.254.169.254, etc.) and read the responses.
+
+# Maximum number of HTTP redirects we'll follow before giving up. requests'
+# default is 30 — far too generous for fetching attacker-controlled URLs.
+_MAX_REDIRECTS = 5
+
+
+def is_safe_target_host(hostname: str) -> bool:
+    """Return True only if *every* IP `hostname` resolves to is publicly routable.
+
+    Used both before issuing the initial request and after each redirect so an
+    attacker can't bounce us off a public host into RFC1918 space.
+    """
+    if not hostname:
+        return False
+    # Strip brackets from IPv6 literals (e.g. "[::1]" → "::1")
+    h = hostname.strip("[]")
+    try:
+        infos = socket.getaddrinfo(h, None)
+    except socket.gaierror:
+        return False
+    except Exception:
+        return False
+    if not infos:
+        return False
+    for info in infos:
+        ip_str = info[4][0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            return False
+        if (ip.is_private or ip.is_loopback or ip.is_link_local
+                or ip.is_multicast or ip.is_reserved or ip.is_unspecified):
+            return False
+    return True
 
 # Random User-Agents Pool
 USER_AGENTS = [
@@ -48,6 +93,45 @@ def get_random_headers():
         "Cache-Control": "max-age=0",
     }
 
+def _fetch_with_ssrf_guard(target_url, headers, timeout):
+    """GET target_url, manually following redirects so each hop is re-validated.
+
+    Why manual: requests.get(allow_redirects=True) blindly follows 3xx Location
+    headers — an attacker-controlled public host could redirect us to
+    http://10.0.0.1/secret and we'd happily fetch it. We disable auto-redirects
+    and re-check the host on every hop.
+    """
+    session = requests.Session()
+    current_url = target_url
+    hops = 0
+    while True:
+        parsed = urlparse(current_url)
+        if parsed.scheme not in ("http", "https"):
+            print(f"[SSRF GUARD] Refusing non-http(s) scheme: {parsed.scheme}")
+            return None
+        if not is_safe_target_host(parsed.hostname):
+            print(f"[SSRF GUARD] Refusing private/loopback host: {parsed.hostname}")
+            return None
+
+        response = session.get(
+            current_url,
+            headers=headers,
+            timeout=timeout,
+            allow_redirects=False,
+            verify=False,
+        )
+        if not response.is_redirect:
+            return response
+        if hops >= _MAX_REDIRECTS:
+            print(f"[SSRF GUARD] Redirect limit ({_MAX_REDIRECTS}) hit at {current_url}")
+            return response
+        location = response.headers.get("Location")
+        if not location:
+            return response
+        current_url = urljoin(current_url, location)
+        hops += 1
+
+
 def is_URL_accessible(url, timeout=10):
     """
     Checks if a URL is accessible and returns the result, the final URL used (if accessible), and the response object.
@@ -68,7 +152,9 @@ def is_URL_accessible(url, timeout=10):
 
         current_url_attempt = target_url
         try:
-            page = requests.get(current_url_attempt, headers=headers, timeout=timeout, allow_redirects=True, verify=False)
+            page = _fetch_with_ssrf_guard(current_url_attempt, headers, timeout)
+            if page is None:
+                return False, None, None
             print(f"Attempt 1: Accessed {current_url_attempt}, Status: {page.status_code}")
 
         except requests.RequestException as e:
@@ -79,9 +165,10 @@ def is_URL_accessible(url, timeout=10):
                 target_url_retry = f"https://{new_netloc_with_www}{parsed_current.path or ''}{'?' + parsed_current.query if parsed_current.query else ''}"
                 print(f"Retrying with www: {target_url_retry}")
                 try:
-                    # ใช้ headers ใหม่สำหรับ retry
                     headers_retry = get_random_headers()
-                    page = requests.get(target_url_retry, headers=headers_retry, timeout=timeout, allow_redirects=True, verify=False)
+                    page = _fetch_with_ssrf_guard(target_url_retry, headers_retry, timeout)
+                    if page is None:
+                        return False, None, None
                     print(f"Attempt 2: Accessed {target_url_retry}, Status: {page.status_code}")
                     current_url_attempt = target_url_retry
                 except requests.RequestException as e_retry:
@@ -96,7 +183,7 @@ def is_URL_accessible(url, timeout=10):
 
         actual_status_code = page.status_code
         final_url_used = page.url
-        
+
         # เงื่อนไข: ถ้า status code อยู่ในช่วง 200-399 (สำเร็จ หรือ redirect) ถือว่าเข้าถึงได้
         if 200 <= actual_status_code < 404:
             print(f"URL considered ACCESSIBLE based on status code: {final_url_used} (Status: {actual_status_code})")
@@ -127,8 +214,10 @@ def get_domain(url):
 def getPageContent(url):
     # ไม่ต้อง parse และสร้าง url ใหม่ เพราะอาจทำให้ path หายไป ## >> [แก้ไข] << ##
     try:
-        page = requests.get(url, timeout=10, verify=False) # เพิ่ม timeout และ verify=False
-        
+        page = _fetch_with_ssrf_guard(url, {}, 10)
+        if page is None:
+            return None, None
+
         ## >> [แก้ไข] << ## เปลี่ยนเงื่อนไขการตรวจสอบ status code ให้กว้างขึ้น
         if not (200 <= page.status_code < 300): # สำหรับ content ต้องเป็น 2xx เท่านั้น
              raise requests.RequestException(f"Status code was {page.status_code}")
@@ -140,7 +229,9 @@ def getPageContent(url):
             retry_url = f"{parsed.scheme or 'https'}://www.{parsed.netloc}{parsed.path or ''}{'?' + parsed.query if parsed.query else ''}"
             print(f"Retrying getPageContent with: {retry_url}")
             try:
-                page = requests.get(retry_url, timeout=10, verify=False)
+                page = _fetch_with_ssrf_guard(retry_url, {}, 10)
+                if page is None:
+                    return None, None
             except requests.RequestException as e_retry:
                 print(f"Retry for content failed: {e_retry}")
                 return None, None

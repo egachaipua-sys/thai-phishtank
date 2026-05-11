@@ -18,8 +18,7 @@ from flask_mail import Message
 import re
 import secrets
 from itsdangerous import URLSafeTimedSerializer
-from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 auth_blueprint = Blueprint("auth", __name__)
 
@@ -258,8 +257,17 @@ def login():
 
         user = User.get_user_by_email(email)
 
+        # Collapse "user not found" and "wrong password" into the same response
+        # (and matching timing via dummy_verify) so an attacker can't enumerate
+        # registered email addresses.
         if not user:
-            return jsonify({"alert": translate("user_not_found"), "alert_type": "error"})
+            User.dummy_verify()
+            return jsonify(
+                {
+                    "alert": translate("incorrect_credentials"),
+                    "alert_type": "error",
+                }
+            )
 
         if not User.verify_password(email, password):
             return jsonify(
@@ -334,59 +342,80 @@ def confirm_email():
 
     return render_template("auth/view/confirm.html", lang=session["lang"])
 
-email_request_counts = defaultdict(int)
-email_request_timestamps = defaultdict(list)
+def _generic_forgot_response():
+    """Same response whether or not the email exists — prevents enumeration."""
+    return jsonify({
+        "alert": TRANSLATIONS["check_email_reset_password_alert"][g.lang],
+        "alert_type": "success",
+        "sweetalert": {
+            "icon": "success",
+            "title": TRANSLATIONS["success_title"][g.lang],
+            "text": TRANSLATIONS["check_email_reset_password"][g.lang]
+        }
+    })
+
+
+def _within_reset_rate_limit(email):
+    """Mongo-backed rate limit: max 3 reset attempts per email in 24h.
+
+    The previous implementation used a process-local defaultdict which broke
+    under multi-worker gunicorn (each worker had its own counter).
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=1)
+    try:
+        count = mongo.db.password_reset_attempts.count_documents({
+            "email": email,
+            "attempted_at": {"$gte": cutoff},
+        })
+        return count < 3
+    except Exception as e:
+        # Fail open rather than locking everyone out if Mongo is unhappy.
+        print(f"[rate-limit] count failed: {e}")
+        return True
+
+
+def _record_reset_attempt(email):
+    try:
+        mongo.db.password_reset_attempts.insert_one({
+            "email": email,
+            "attempted_at": datetime.now(timezone.utc),
+        })
+    except Exception as e:
+        print(f"[rate-limit] record failed: {e}")
+
 
 @auth_blueprint.route("/forgot", methods=["GET", "POST"])
 def forgot():
     if request.method == "POST":
-        email = request.form["email"]
+        email = (request.form.get("email") or "").strip().lower()
+
+        # Empty input gets the same response — no leak of validation logic.
+        if not email:
+            return _generic_forgot_response()
+
+        # Rate limit BEFORE the user lookup so timing & response don't reveal
+        # whether the email exists.
+        if not _within_reset_rate_limit(email):
+            return jsonify({
+                "alert": TRANSLATIONS["too_many_requests_alert"][g.lang],
+                "alert_type": "warning",
+                "sweetalert": {
+                    "icon": "warning",
+                    "title": TRANSLATIONS["warning_title"][g.lang],
+                    "text": TRANSLATIONS["too_many_requests"][g.lang]
+                }
+            })
+
+        _record_reset_attempt(email)
+
         user = User.get_user_by_email(email)
-
         if user:
-            now = datetime.now()
-            email_request_timestamps[email] = [
-                ts for ts in email_request_timestamps[email] if now - ts < timedelta(days=1)
-            ]
-
-            if len(email_request_timestamps[email]) >= 3:
-                return jsonify({
-                    "alert": TRANSLATIONS["too_many_requests_alert"][g.lang],
-                    "alert_type": "warning",
-                    "sweetalert": {
-                        "icon": "warning",
-                        "title": TRANSLATIONS["warning_title"][g.lang],
-                        "text": TRANSLATIONS["too_many_requests"][g.lang]
-                    }
-                })
-
             serializer = URLSafeTimedSerializer(Config.SECRET_KEY)
             token = serializer.dumps(email, salt='reset-password-salt')
-
             send_reset_email(email, token)
 
-            email_request_timestamps[email].append(now)
-
-            return jsonify({
-                "alert": TRANSLATIONS["check_email_reset_password_alert"][g.lang],
-                "alert_type": "success",
-                "sweetalert": {
-                    "icon": "success",
-                    "title": TRANSLATIONS["success_title"][g.lang],
-                    "text": TRANSLATIONS["check_email_reset_password"][g.lang]
-                }
-            })
-
-        else:
-            return jsonify({
-                "alert": TRANSLATIONS["email_not_found_alert"][g.lang],
-                "alert_type": "error",
-                "sweetalert": {
-                    "icon": "error",
-                    "title": TRANSLATIONS["error_title"][g.lang],
-                    "text": TRANSLATIONS["email_not_found"][g.lang]
-                }
-            })
+        # Same response in both branches — prevents email enumeration.
+        return _generic_forgot_response()
 
     return render_template("auth/view/forgot-password.html", lang=session["lang"])
 

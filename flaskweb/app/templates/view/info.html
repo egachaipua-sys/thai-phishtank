@@ -25,15 +25,18 @@
 
     <h4>2. {{ translations["endpoint_heading"][lang] }}</h4>
     <p>{{ translations["endpoint_desc"][lang] }}</p>
-    <pre>POST https://thaiphishtank.org/api/phishing-url?url=URL&amp;api_key=YOUR_API_KEY</pre>
+    <pre>POST https://thaiphishtank.org/api/phishing-url?url=URL
+Authorization: Bearer YOUR_API_KEY</pre>
     <ul>
-        <li><code>url</code> &mdash; {{ translations["url_to_check"][lang] }}</li>
-        <li><code>api_key</code> &mdash; {{ translations["api_key_received"][lang] }}</li>
+        <li><code>url</code> &mdash; {{ translations["url_to_check"][lang] }} <em>({{ translations["query_param"][lang] }})</em></li>
+        <li><code>Authorization</code> &mdash; {{ translations["auth_header_desc"][lang] }} <em>({{ translations["http_header"][lang] }})</em></li>
     </ul>
+    <p class="text-muted"><small><strong>{{ translations["legacy_note_title"][lang] }}:</strong> {{ translations["legacy_note_desc"][lang] }}</small></p>
 
     <h4>3. {{ translations["use_curl"][lang] }}</h4>
     <p>{{ translations["send_post"][lang] }}</p>
-    <pre>curl -X POST "https://thaiphishtank.org/api/phishing-url?url=https://example.com&amp;api_key=YOUR_API_KEY"</pre>
+    <pre>curl -X POST "https://thaiphishtank.org/api/phishing-url?url=https://example.com" \
+     -H "Authorization: Bearer YOUR_API_KEY"</pre>
 
     <h4>4. {{ translations["use_python"][lang] }}</h4>
     <p>{{ translations["use_requests"][lang] }}</p>
@@ -41,12 +44,10 @@
 import requests
 
 url = "https://thaiphishtank.org/api/phishing-url"
-params = {
-    "url": "https://example.com",
-    "api_key": "YOUR_API_KEY"
-}
+params = {"url": "https://example.com"}
+headers = {"Authorization": "Bearer YOUR_API_KEY"}
 
-response = requests.post(url, params=params)
+response = requests.post(url, params=params, headers=headers)
 data = response.json()
 
 if data["result"] == "phishing":
@@ -232,13 +233,18 @@ if data["result"] == "NA":
     "after_login": {"th": "หลังจากเข้าสู่ระบบแล้วให้กดเลือกเมนู ขอรับ API Key:", "en": "After logging in, select the 'Request API Key' menu:"},
     "copy_api_key": {"th": "กดปุ่ม ขอรับ API Key ตามรูปด้านบน จากนั้นเมื่อ API Key ปรากฏบนหน้าจอ ให้กดปุ่ม คัดลอก เพื่อนำไปใช้งานในระบบ", "en": "Click the 'Request API Key' button as shown above. Once the API Key appears on the screen, click 'Copy' to use it in the system."},
     "endpoint_heading": {"th": "Endpoint", "en": "Endpoint"},
-    "endpoint_desc": {"th": "เรียก POST ไปยัง endpoint ต่อไปนี้ พร้อมแนบ query parameter:", "en": "Send a POST request to the endpoint below, passing the two query parameters:"},
+    "endpoint_desc": {"th": "ส่ง POST ไปยัง endpoint ด้านล่าง โดยส่ง URL ที่ต้องการตรวจเป็น query parameter และส่ง API Key ผ่าน HTTP header ชื่อ Authorization:", "en": "Send a POST request to the endpoint below. Pass the URL to check as a query parameter, and send your API key in the Authorization HTTP header:"},
     "use_curl": {"th": "ใช้งานผ่านคำสั่ง curl", "en": "Using curl"},
     "send_post": {"th": "ตัวอย่างการเรียกผ่าน curl:", "en": "Example using curl:"},
     "use_python": {"th": "ใช้งานผ่าน Python", "en": "Using Python"},
     "use_requests": {"th": "ใช้ไลบรารี requests เพื่อส่งคำขอและตัดสินใจจากฟิลด์ result + detection_type:", "en": "Use the requests library to call the API and branch on the result + detection_type fields:"},
     "url_to_check": {"th": "URL ที่ต้องการตรวจสอบ", "en": "The URL to check"},
     "api_key_received": {"th": "API Key ที่ได้รับจากระบบ", "en": "Your API Key from the system"},
+    "query_param": {"th": "query parameter", "en": "query parameter"},
+    "http_header": {"th": "HTTP header", "en": "HTTP header"},
+    "auth_header_desc": {"th": "API Key ที่ได้รับจากระบบ ส่งในรูปแบบ Bearer token", "en": "Your API key, sent as a Bearer token"},
+    "legacy_note_title": {"th": "หมายเหตุ", "en": "Note"},
+    "legacy_note_desc": {"th": "เพื่อรองรับโค้ดเดิม ระบบยังคงรับ API Key ผ่าน query parameter ?api_key= ได้ แต่วิธีนี้ทำให้ API Key รั่วไหลออกไปยัง access log ของเว็บเซิร์ฟเวอร์ จึงแนะนำให้เปลี่ยนมาใช้ Authorization header แทน", "en": "For backward compatibility the API still accepts ?api_key= as a query parameter, but doing so leaks the key into web-server access logs. Switch to the Authorization header for new integrations."},
 
     "response_heading": {"th": "รูปแบบ Response", "en": "Response format"},
     "response_desc": {"th": "ทุก response จะมีฟิลด์หลัก 3 ตัวคือ code, result, detection_type ใช้สรุปคำตัดสินและแหล่งที่มา และฟิลด์อื่นๆ ที่เกี่ยวข้องตามแต่ละกรณี", "en": "Every response includes three top-level fields — code, result, detection_type — which summarise the verdict and where it came from. The body also includes contextual fields described below."},

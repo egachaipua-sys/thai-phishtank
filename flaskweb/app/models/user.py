@@ -7,6 +7,11 @@ from bson.objectid import ObjectId
 
 ph = PasswordHasher()
 
+# Precomputed argon2 hash of a dummy password. We verify against this when an
+# email lookup fails so the response timing matches the "real user, wrong
+# password" path — otherwise the timing gap reveals whether the email exists.
+_DUMMY_HASH = ph.hash("dummy_password_for_timing_equalization")
+
 
 def _hidden_users_filter():
     """Mongo filter that excludes admin/service accounts from user listings.
@@ -111,6 +116,18 @@ class User:
         except Exception as e:
             print(f"Error: {e}")
             return None
+
+    @staticmethod
+    def dummy_verify():
+        """Run argon2 against a placeholder hash. Used to match the timing of
+        verify_password() when the email lookup fails, so an attacker can't
+        enumerate accounts by comparing response times."""
+        try:
+            ph.verify(_DUMMY_HASH, "wrong")
+        except VerifyMismatchError:
+            pass
+        except Exception:
+            pass
 
     @staticmethod
     def verify_password(email, password):
@@ -227,10 +244,22 @@ class User:
                 .limit(length)
             )
             
-            # Convert ObjectId to string for JSON serialization
+            # Convert ObjectId to string for JSON serialization. Ensure every
+            # row has the fields DataTables expects — legacy documents may be
+            # missing `firstname`/`lastname`/etc, and DataTables throws
+            # "Requested unknown parameter" when a field is absent.
+            DEFAULTS = {
+                "firstname": "",
+                "lastname": "",
+                "email": "",
+                "organization": "",
+                "role": "user",
+                "confirmed": False,
+                "api_key": "",
+            }
             normalized_results = []
             for result in results:
-                normalized_result = {}
+                normalized_result = dict(DEFAULTS)
                 for k, v in result.items():
                     if k == "_id":
                         normalized_result[k] = str(v)
@@ -239,7 +268,7 @@ class User:
                     else:
                         normalized_result[k] = v
                 normalized_results.append(normalized_result)
-            
+
             return normalized_results
         except Exception as e:
             print(f"Error find_users_for_datatable: {e}")

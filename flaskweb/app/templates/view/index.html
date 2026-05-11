@@ -310,7 +310,10 @@ administrators"},
                                 </div>`;
                         } else if (data.prediction === "split") {
                             // กรณีผลไม่เหมือนกันระหว่าง Our System และ Safe Browsing
-                            icon = 'info';
+                            icon = 'warning';
+                            if (data.warning_title) {
+                                title = data.warning_title;
+                            }
                             const ourSystem = data.our_system || "Unknown";
                             const safeBrowsing = data.safe_browsing || "Unknown";
 
@@ -335,12 +338,22 @@ administrators"},
                                 return '#3498db'; // Unknown = สีฟ้า
                             };
 
-                            // สร้างข้อความหลัก (บรรทัดแรก)
-                            const mainMessage = data.message.split('\n')[0];
+                            // Warning banner (rendered when the FastAPI verdict is a split)
+                            const hasWarning = data.warning && data.warning_message;
+                            const warningBanner = hasWarning ? `
+                                <div style="background: #fff3cd; border: 1px solid #ffeeba; border-left: 5px solid #e67e22; color: #856404; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; text-align: left; display: flex; align-items: flex-start; gap: 10px;">
+                                    <span style="font-size: 18px; line-height: 1.4;">&#9888;&#65039;</span>
+                                    <span style="line-height: 1.5;">${data.warning_message}</span>
+                                </div>` : '';
+
+                            // Fall back to the FastAPI message only when the banner isn't shown.
+                            const mainMessageHtml = hasWarning ? '' : `
+                                <p style="color: #333; margin-bottom: 20px; line-height: 1.6;">${data.message.split('\n')[0]}</p>`;
 
                             message = `
                                 <div style="text-align: center;">
-                                    <p style="color: #333; margin-bottom: 20px; line-height: 1.6;">${mainMessage}</p>
+                                    ${warningBanner}
+                                    ${mainMessageHtml}
                                     <p style="margin: 5px 0;"><strong>${ourSystemLabel}:</strong> <span style="color: ${getColor(ourSystem)}; font-weight: bold;">${ourSystemDisplay}</span></p>
                                     <p style="margin: 5px 0;"><strong>${safeBrowsingLabel}:</strong> <span style="color: ${getColor(safeBrowsing)}; font-weight: bold;">${safeBrowsingDisplay}</span></p>
                                 </div>`;

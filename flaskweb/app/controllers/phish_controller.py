@@ -72,7 +72,11 @@ def translate_message(message_key):
             'verification_timed_out': 'Verification timed out. Please try again.',
             'cannot_connect_service': 'Cannot connect to verification service.',
             'verification_completed': 'Verification completed',
-            'url_safe_or_not_found': 'URL is not phishing or not found in blacklist'
+            'url_safe_or_not_found': 'URL is not phishing or not found in blacklist',
+            'warning_split_title': 'Caution: Detection systems disagree',
+            'warning_split_ml_phishing': 'Our ML model flagged this URL as PHISHING, but Google Safe Browsing reports it as SAFE. Proceed with caution.',
+            'warning_split_gsb_phishing': 'Google Safe Browsing flagged this URL as PHISHING, but our ML model reports it as SAFE. Proceed with caution.',
+            'warning_split_generic': 'Detection systems returned conflicting verdicts. Proceed with caution.',
         },
         'th': {
             'url_required': 'กรุณากรอก URL',
@@ -131,7 +135,11 @@ def translate_message(message_key):
             'verification_timed_out': 'การตรวจสอบหมดเวลา กรุณาลองใหม่อีกครั้ง',
             'cannot_connect_service': 'ไม่สามารถเชื่อมต่อกับบริการตรวจสอบได้',
             'verification_completed': 'การตรวจสอบเสร็จสมบูรณ์',
-            'url_safe_or_not_found': 'URL นี้ปลอดภัย หรือไม่พบในรายการแบล็คลิสต์'
+            'url_safe_or_not_found': 'URL นี้ปลอดภัย หรือไม่พบในรายการแบล็คลิสต์',
+            'warning_split_title': 'คำเตือน: ระบบตรวจจับให้ผลไม่ตรงกัน',
+            'warning_split_ml_phishing': 'โมเดล ML ของเราระบุว่า URL นี้เป็น "ฟิชชิง" แต่ Google Safe Browsing ระบุว่า "ปลอดภัย" โปรดใช้ความระมัดระวัง',
+            'warning_split_gsb_phishing': 'Google Safe Browsing ระบุว่า URL นี้เป็น "ฟิชชิง" แต่โมเดล ML ของเราระบุว่า "ปลอดภัย" โปรดใช้ความระมัดระวัง',
+            'warning_split_generic': 'ระบบตรวจจับให้ผลลัพธ์ที่ขัดแย้งกัน โปรดใช้ความระมัดระวัง',
         }
     }
 
@@ -386,16 +394,22 @@ def check_url():
         with requests.post(fastapi_url, params=params) as response:
             response.raise_for_status()
             fastapi_result = response.json()
-    
+
+        # New API verdict fields (forwarded to the frontend; older clients can ignore).
+        api_code = fastapi_result.get("code")
+        api_result = fastapi_result.get("result")
+        api_detection_type = fastapi_result.get("detection_type")
+        api_warning = bool(fastapi_result.get("warning"))
+
         if fastapi_result.get("result_type") == "split" or fastapi_result.get("prediction") == "split":
-      
+
             raw_our = fastapi_result.get("our_system")
             raw_safe = fastapi_result.get("safe_browsing")
-            
+
             # Normalize to "Unknown" if None or "unknown" (case-insensitive)
             our_system = "Unknown" if not raw_our or str(raw_our).lower() == "unknown" else raw_our
             safe_browsing = "Unknown" if not raw_safe or str(raw_safe).lower() == "unknown" else raw_safe
-            
+
             # Case 3: Both Unknown (explicit check)
             if our_system == "Unknown" and safe_browsing == "Unknown":
                 result = {
@@ -407,21 +421,29 @@ def check_url():
                 # Select appropriate translation for other split cases
                 if our_system == "Phishing" and safe_browsing == "Safe":
                     msg = translate_message("split_phishing_safe")
+                    warning_message = translate_message("warning_split_ml_phishing")
                 elif our_system == "Phishing" and safe_browsing == "Unknown":
                     msg = translate_message("split_google_unknown_our_phishing")
+                    warning_message = translate_message("warning_split_ml_phishing")
                 elif safe_browsing == "Phishing" and our_system == "Safe":
                     msg = translate_message("split_safe_phishing")
+                    warning_message = translate_message("warning_split_gsb_phishing")
                 elif safe_browsing == "Phishing" and our_system == "Unknown":
                     msg = translate_message("split_unknown_google_phishing")
+                    warning_message = translate_message("warning_split_gsb_phishing")
                 else:
                     msg = translate_message("split_unknown").format(our_val=our_system, safe_val=safe_browsing)
-                    
+                    warning_message = translate_message("warning_split_generic")
+
                 result = {
-                    "status": "info",
+                    "status": "warning",
                     "prediction": "split",
                     "our_system": our_system,
                     "safe_browsing": safe_browsing,
                     "message": msg,
+                    "warning": True,
+                    "warning_title": translate_message("warning_split_title"),
+                    "warning_message": warning_message,
                 }
         elif fastapi_result.get("prediction") == "phishing":
             result = {
@@ -461,6 +483,16 @@ def check_url():
                 "prediction": fastapi_result.get("prediction", "safe"),
                 "message": translate_message("safe_verified_message").format(url=url_to_check),
             }
+
+        # Forward the FastAPI verdict triplet so newer frontends can use it directly.
+        result["code"] = api_code
+        result["result"] = api_result
+        result["detection_type"] = api_detection_type
+        # If the API itself flagged a warning and the split branch didn't already set one, propagate it.
+        if api_warning and not result.get("warning"):
+            result["warning"] = True
+            result["warning_title"] = translate_message("warning_split_title")
+            result["warning_message"] = fastapi_result.get("warning_message") or translate_message("warning_split_generic")
 
         return jsonify(result)
 

@@ -153,6 +153,30 @@ curl -X POST "http://localhost:8000/api/phishing-url?url=https://example.com&api
 
 In addition to the three fields above, the body also contains contextual data (e.g. `url`, `domain_name`, `prediction`, `message`, `result_type`, `online`, `details`, `phish_id`, `phish_detail_url`) for backwards compatibility with existing consumers.
 
+**Split-decision warning**
+
+When the ML model and Google Safe Browsing disagree, the API still returns a single verdict (phishing wins), but flags the response so the client can show a warning:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `warning` | bool | `true` when the verdict came from a disagreement between detection systems |
+| `warning_message` | string | Human-readable explanation naming which system flagged it and which disagreed |
+
+Example (ML said phishing, Google Safe Browsing said safe):
+
+```json
+{
+  "code": 401,
+  "result": "phishing",
+  "detection_type": "ML",
+  "warning": true,
+  "warning_message": "WARNING: Detection systems disagree. Our ML model flagged this URL as PHISHING, but Google Safe Browsing reports it as SAFE. Proceed with caution.",
+  "...": "..."
+}
+```
+
+Clients should surface `warning_message` (e.g. as a banner or modal) whenever `warning == true`.
+
 ### `POST /api/verifited-url` (admin)
 
 Manually verify a URL as phishing. Adds or updates the blacklist record.
@@ -183,7 +207,7 @@ For each URL the prediction API runs the following pipeline. The first stage tha
 8. **Reconcile** — combine ML and Safe Browsing:
    - Both agree → `400 / safe / ML` or `401 / phishing / ML` (also adds to whitelist or blacklist).
    - Safe Browsing unavailable → use ML alone (`400` or `401`).
-   - Disagree (split) → phishing wins; attribute to whichever flagged it (`401 / ML` or `301 / google safe browsing`).
+   - Disagree (split) → phishing wins; attribute to whichever flagged it (`401 / ML` or `301 / google safe browsing`). The response sets `warning: true` and includes a `warning_message` so the client can alert the user that the verdict is uncertain.
 
 ## License
 

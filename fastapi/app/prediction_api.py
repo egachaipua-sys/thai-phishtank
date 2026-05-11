@@ -1275,15 +1275,28 @@ async def check_phishing_url(url: str, api_key: str = Depends(verify_api_key)):
             # Phishing-wins on disagreement; attribute to whichever flagged it.
             if our_system_result == "Phishing":
                 split_code, split_result, split_detection = 401, "phishing", "ML"
+                warning_message = (
+                    f"WARNING: Detection systems disagree. Our ML model flagged this URL as PHISHING, "
+                    f"but Google Safe Browsing reports it as SAFE. Proceed with caution."
+                )
             elif safe_browsing_result == "Phishing":
                 split_code, split_result, split_detection = 301, "phishing", "google safe browsing"
+                warning_message = (
+                    f"WARNING: Detection systems disagree. Google Safe Browsing flagged this URL as PHISHING, "
+                    f"but our ML model reports it as SAFE. Proceed with caution."
+                )
             else:
                 split_code, split_result, split_detection = 500, "NA", "Unable to detect"
+                warning_message = (
+                    "WARNING: Unable to determine a verdict — detection systems returned an unexpected combination."
+                )
 
             response_data = {
                 "code": split_code,
                 "result": split_result,
                 "detection_type": split_detection,
+                "warning": True,
+                "warning_message": warning_message,
                 "url": url,
                 "domain_name": domain_name,
                 "our_system": our_system_result,

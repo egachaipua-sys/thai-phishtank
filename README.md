@@ -480,4 +480,5 @@ See repository for license information.
 
 ## Note
 1) This research project is funded by Thailand Science Research and Innovation (TSRI) through the Fundamental Fund for fiscal year 2025 (Project No. 206083).
-2) This research project is a collaboration between DSI (Department of Special Investigation), Ministry of Justice, Thailand, and the Information Security & Advanced Network (ISAN) Research Group at Mahasarakham University Thailand.
+2) This research project is a collaboration between Department of Special Investigation (DSI), Ministry of Justice, Thailand, and the Information Security & Advanced Network (ISAN) Research Group at Mahasarakham University, Thailand.
+3) The verified phishing URLs used for evaluation were provided by DSI and participating Thai government agencies under its mandate in the Special Case Investigation Act B.E. 2547. The dataset contains only URLs, with no information on victims, complainants, or case files. As the research involves only publicly/institutionally provided metadata (URLs) and no human participants, the study does not require individual informed consent or human-subject institutional review.
